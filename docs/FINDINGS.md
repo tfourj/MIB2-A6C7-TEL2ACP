@@ -147,7 +147,12 @@ Build notes:
   `-Xbootclasspath/p:` puts the jar ahead of `lsd.jxe`, so its classes win.
 - On AU57x, `installjava -navignoreon` refuses to install NavIgnore ("old internal java structure").
   That refers to the NavIgnore classes, not to the bootclasspath mechanism.
-- `TEL2ACP/tel2acp.sh` adds its own marked line for `lsd/jars/TEL2ACP.jar` the same way, and keeps `lsd.sh.tel2acp.bak` as the restore point.
+- `TEL2ACP/tel2acp.sh` adds its own marked block for `lsd/jars/TEL2ACP.jar` the same way, and keeps `lsd.sh.tel2acp.bak` as the restore point.
+- The unit's own system dump (`01_Export_.../MMXcore/info`) shows the real HMI start line:
+  `/ifs/jre/bin/j9 ... -Xbootclasspath::/ifs/lsd.jxe:/eso/hmi/lsd/jars/lang_data.zip:...:/eso/hmi/lsd/jars/AppDevelopment.jar:... -jxe:/ifs/lsd.jxe`.
+  So `lsd.jxe` lives in the boot image at `/ifs/lsd.jxe` (not in `/eso/hmi/lsd/`), and jars are referenced as `/eso/hmi/lsd/jars/...`.
+- The same dump shows `/mnt/persist` (`/dev/fs0p2`, 8 MB) mounted on the MMX. The HMI already writes `/mnt/persist/savedpreset.json` there,
+  so the boot guard flags go there too.
 
 ## Risks and things not verified
 
