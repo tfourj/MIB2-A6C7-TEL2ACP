@@ -15,7 +15,8 @@ import de.audi.atip.log.LogChannel;
  * Rebuilt 1:1 from the original bytecode. The only change is the TEL key
  * (hard-key model 4): it opens Apple CarPlay / terminal mode instead of the
  * phone menu. Pressing TEL while a terminal mode screen is shown falls back
- * to the original phone behaviour.
+ * to the original phone behaviour. When TEL opens CarPlay it also lights the
+ * TEL key, because the terminal mode state never sets a key light itself.
  *
  * Loaded ahead of lsd.jxe with -Xbootclasspath/p:, so fields and method
  * signatures must stay identical to the original class.
@@ -48,6 +49,9 @@ public class HardKeyManager {
 
     // TEL is ignored while this popup is shown (original behaviour)
     private static final int POPUP_TEL_BLOCKED = 250002;
+
+    // Key light id of TEL, as the phone state machine passes it to KbdService
+    private static final int HK_LIGHT_TEL = 4;
 
     // Terminal mode app id 24, screens 240000..240009 (TerminalModeScreenFactory)
     private static final int SCREEN_APP_DIVISOR = 10000;
@@ -158,6 +162,16 @@ public class HardKeyManager {
             fireSMEvent(terminalId, HK_TEL);
         } else {
             fireSMEvent(terminalId, SWITCH_TO_TERMINAL_MODE);
+            lightTelKey(terminalId);
+        }
+    }
+
+    /** Lights TEL like the phone screen does. Never throws, the key press already went through. */
+    private void lightTelKey(int terminalId) {
+        try {
+            this.framework.getKbdService().setHKIlluminationExclusive(terminalId, HK_LIGHT_TEL, true);
+        } catch (Throwable t) {
+            // A missing light must not break the TEL key
         }
     }
 
