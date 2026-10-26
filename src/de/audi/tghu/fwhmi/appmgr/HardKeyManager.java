@@ -1,7 +1,12 @@
 package de.audi.tghu.fwhmi.appmgr;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+
+import org.dsi.ifc.carplay.DSICarplay;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
 
 import de.audi.atip.base.IFrameworkAccess;
 import de.audi.atip.hmi.HMIService;
@@ -14,9 +19,10 @@ import de.audi.atip.log.LogChannel;
  *
  * Rebuilt 1:1 from the original bytecode. The only change is the TEL key
  * (hard-key model 4): it opens Apple CarPlay / terminal mode instead of the
- * phone menu. Pressing TEL while a terminal mode screen is shown falls back
- * to the original phone behaviour. When TEL opens CarPlay it also lights the
- * TEL key, because the terminal mode state never sets a key light itself.
+ * phone menu. What TEL does while a terminal mode screen is already shown
+ * depends on the mode in /mnt/persist/tel2acp_mode (see handleTelKey).
+ * When TEL opens CarPlay it also lights the TEL key, because the terminal
+ * mode state never sets a key light itself.
  *
  * Loaded ahead of lsd.jxe with -Xbootclasspath/p:, so fields and method
  * signatures must stay identical to the original class.
@@ -56,6 +62,21 @@ public class HardKeyManager {
     // Terminal mode app id 24, screens 240000..240009 (TerminalModeScreenFactory)
     private static final int SCREEN_APP_DIVISOR = 10000;
     private static final int TERMINAL_MODE_APP_ID = 24;
+
+    // ICoreSystemModelBank.ACTIVE_SMARTPHONE_DEVICE_CHOICE: 1 while a CarPlay device is active
+    // (2 Android Auto, 0 none), set by TMDeviceControl
+    private static final int ACTIVE_SMARTPHONE_DEVICE_CHOICE = 1122;
+    private static final int ACTIVE_DEVICE_CARPLAY = 1;
+
+    // CarPlay DSI service, asks the iPhone to show one of its own apps
+    private static final String DSI_CARPLAY = "org.dsi.ifc.carplay.DSICarplay";
+    private static final int CARPLAY_UI_PHONE = 2;
+
+    // What TEL does while terminal mode is on screen, written by "tel2acp.sh mode-*"
+    private static final String MODE_FILE = "/mnt/persist/tel2acp_mode";
+    private static final int MODE_TEL = 0;
+    private static final int MODE_CARPLAY = 1;
+    private static final int MODE_PHONE = 2;
 
     // Original log channel level and message ids
     private static final int LOG_LEVEL = 1000000;
@@ -152,17 +173,88 @@ public class HardKeyManager {
         return getModel(id);
     }
 
-    /** TEL opens CarPlay; TEL again while CarPlay is on screen opens the phone menu. */
+    /**
+     * TEL opens CarPlay. TEL again while CarPlay is on screen depends on the mode:
+     * tel opens the phone menu, carplay does nothing, phone opens the iPhone's
+     * Phone app in CarPlay (the phone menu when that isn't possible).
+     */
     private void handleTelKey(int terminalId) {
         HMIService hmi = getHmiService();
         if (hmi.getCurrentPopup() == POPUP_TEL_BLOCKED) {
             return;
         }
-        if (hmi.getCurrentScreenID() / SCREEN_APP_DIVISOR == TERMINAL_MODE_APP_ID) {
-            fireSMEvent(terminalId, HK_TEL);
-        } else {
+        if (hmi.getCurrentScreenID() / SCREEN_APP_DIVISOR != TERMINAL_MODE_APP_ID) {
             fireSMEvent(terminalId, SWITCH_TO_TERMINAL_MODE);
             lightTelKey(terminalId);
+            return;
+        }
+        int mode = readMode();
+        if (mode == MODE_CARPLAY) {
+            return;
+        }
+        if (mode == MODE_PHONE && openCarPlayPhone()) {
+            lightTelKey(terminalId);
+            return;
+        }
+        fireSMEvent(terminalId, HK_TEL);
+    }
+
+    /** The TEL mode from the mode file. Missing or unknown means tel. */
+    private static int readMode() {
+        FileInputStream in = null;
+        try {
+            in = new FileInputStream(MODE_FILE);
+            byte[] buf = new byte[16];
+            int n = in.read(buf);
+            String mode = n > 0 ? new String(buf, 0, n).trim() : "";
+            if (mode.equals("carplay")) {
+                return MODE_CARPLAY;
+            }
+            if (mode.equals("phone")) {
+                return MODE_PHONE;
+            }
+        } catch (Throwable t) {
+            // No mode file yet
+        } finally {
+            try {
+                if (in != null) {
+                    in.close();
+                }
+            } catch (Throwable t) {
+                // Nothing left to do
+            }
+        }
+        return MODE_TEL;
+    }
+
+    /**
+     * Asks the iPhone to show its Phone app. Only while a CarPlay device is active,
+     * so Android Auto and the no-device screen keep the phone menu. Never throws.
+     */
+    private boolean openCarPlayPhone() {
+        try {
+            if (this.framework.getHmiServiceApp().getChoiceModel(ACTIVE_SMARTPHONE_DEVICE_CHOICE).getValue()
+                    != ACTIVE_DEVICE_CARPLAY) {
+                return false;
+            }
+            BundleContext context = this.framework.getBundleCxt();
+            ServiceReference ref = context.getServiceReference(DSI_CARPLAY);
+            if (ref == null) {
+                return false;
+            }
+            try {
+                DSICarplay carplay = (DSICarplay) context.getService(ref);
+                if (carplay == null) {
+                    return false;
+                }
+                carplay.requestUI(CARPLAY_UI_PHONE);
+                return true;
+            } finally {
+                context.ungetService(ref);
+            }
+        } catch (Throwable t) {
+            // Fall back to the phone menu
+            return false;
         }
     }
 
