@@ -49,6 +49,9 @@ JARS="$HMI/lsd/jars"
 JAR_NAME="TEL2ACP.jar"
 ESD_SRC="$PKG/esd/TEL2ACP.esd"
 ESD_LINK="$HMI/engdefs/z_TEL2ACP.esd"
+# Set_CarPlay_Custom submenu. Sorts after z_TEL2ACP.esd, so its parent screen exists first
+ESD_CUSTOM_SRC="$PKG/esd/TEL2ACP_custom.esd"
+ESD_CUSTOM_LINK="$HMI/engdefs/z_TEL2ACP_custom.esd"
 MARKER="#TEL2ACP"
 
 # Boot guard flags. lsd.sh and the patched class see /mnt/persist on the MMX
@@ -275,10 +278,18 @@ remove_patch_lines() {
 }
 
 remove_gem_link() {
+	if [ -L "$ESD_CUSTOM_LINK" ] || [ -f "$ESD_CUSTOM_LINK" ]; then
+		rm -f "$ESD_CUSTOM_LINK" 2> /dev/null || on -f mmx rm -f "$ESD_CUSTOM_LINK" 2> /dev/null
+	fi
 	if [ -L "$ESD_LINK" ] || [ -f "$ESD_LINK" ]; then
 		rm -f "$ESD_LINK" 2> /dev/null || on -f mmx rm -f "$ESD_LINK" 2> /dev/null
 		log "GEM screen removed"
 	fi
+}
+
+link_esd() {
+	rm -f "$2" 2> /dev/null
+	ln -s "$1" "$2" 2> /dev/null || on -f mmx ln -s "$1" "$2" 2> /dev/null
 }
 
 do_install() {
@@ -421,11 +432,13 @@ do_custom() {
 do_gem_on() {
 	log "== gem-on"
 	[ -f "$ESD_SRC" ] || die "$ESD_SRC is missing on the SD card"
+	[ -f "$ESD_CUSTOM_SRC" ] || die "$ESD_CUSTOM_SRC is missing on the SD card"
 	mount_rw
-	rm -f "$ESD_LINK" 2> /dev/null
-	ln -s "$ESD_SRC" "$ESD_LINK" 2> /dev/null || on -f mmx ln -s "$ESD_SRC" "$ESD_LINK" 2> /dev/null
+	link_esd "$ESD_SRC" "$ESD_LINK"
+	link_esd "$ESD_CUSTOM_SRC" "$ESD_CUSTOM_LINK"
 	mount_ro
 	[ -L "$ESD_LINK" ] || [ -f "$ESD_LINK" ] || die "could not link $ESD_LINK"
+	[ -L "$ESD_CUSTOM_LINK" ] || [ -f "$ESD_CUSTOM_LINK" ] || die "could not link $ESD_CUSTOM_LINK"
 	log "GEM screen added, it shows up after the next reboot"
 }
 
