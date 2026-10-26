@@ -1,2 +1,7 @@
 build/
 *.log
+__pycache__/
+# Firmware images and dumps stay out of the repo
+*.jxe
+rom.classes
+*.dis
