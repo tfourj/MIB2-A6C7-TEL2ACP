@@ -28,33 +28,34 @@ All other buttons work as before. The TEL light only follows CarPlay when TEL op
 | `TEL2ACP.jar` | The patched `HardKeyManager` class |
 | `TEL2ACP.jar.sha1` | Checksum the installer uses to spot a damaged copy |
 | `tel2acp.sh` | Installer: `install`, `uninstall`, `restore`, `status`, `gem-on`, `gem-off` |
-| `command.sh` | Hook to run the installer from the M.I.B. launcher (no SSH needed) |
+| `command.sh` | Hook that runs every patch in `custom-patches/` from M.I.B. (no SSH needed) |
 | `esd/` | Optional GEM screen with Status / Install / Uninstall / Restore buttons |
 
 ## Install
 
-1. Copy the `TEL2ACP` folder to the root of the M.I.B. SD card, next to `apps`, `esd` and `mod`.
+1. Copy the `TEL2ACP` folder into a `custom-patches` folder in the root of the M.I.B. SD card (`custom-patches/TEL2ACP`).
 2. Put the card in SD1 and run the installer, using **one** of these:
 
    **Over SSH**
 
    ```sh
-   on -f rcc /net/mmx/fs/sda0/TEL2ACP/tel2acp.sh install
+   on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh install
    ```
 
    **Without SSH**: copy `TEL2ACP/command.sh` to `mod/command.sh` on the card.
    Then run it with GEM → M.I.B. → individual script, or run the M.I.B. installation again
    (software update from the SD card), which runs `mod/command.sh` at the end. Delete `mod/command.sh` afterwards.
+   It runs `install gem-on` for every patch in `custom-patches/`. To choose patches and actions, fill in `CUSTOM_PATCHES` at the top of the file.
 
 3. Reboot the MMI (GEM → M.I.B. → Reboot).
 4. Press TEL. CarPlay should open.
 
-The installer writes everything it does to `TEL2ACP/tel2acp.log` on the SD card.
+The installer writes everything it does to `custom-patches/TEL2ACP/tel2acp.log` on the SD card.
 
 ### Optional GEM screen
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/TEL2ACP/tel2acp.sh gem-on
+on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh gem-on
 ```
 
 After a reboot, GEM has a **TEL2ACP** screen with Status, Install, Uninstall and Restore.
@@ -71,10 +72,10 @@ and both jars go into one shared `-Xbootclasspath/p:` list. Each has its own boo
 ## Uninstall
 
 ```sh
-on -f rcc /net/mmx/fs/sda0/TEL2ACP/tel2acp.sh uninstall
+on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh uninstall
 ```
 
-Or use **Uninstall** in the GEM screen, or set `TEL2ACP_ACTIONS="uninstall"` in `mod/command.sh`. Reboot afterwards.
+Or use **Uninstall** in the GEM screen, or set `CUSTOM_PATCHES="TEL2ACP uninstall"` in `mod/command.sh`. Reboot afterwards.
 
 `restore` puts back the original `lsd.sh` saved on first install, in case `uninstall` can't clean it.
 
@@ -98,7 +99,7 @@ If the flag is still there at the next start, that start failed, so the block st
 
 1. Lock the car and leave it until the MMI shuts down, or restart the MMI. The next start runs without the patch.
 2. Check `status` (GEM screen, SSH or `mod/command.sh`). It shows `DISABLED the patch after a failed start`.
-3. Run `uninstall`. Keep `TEL2ACP/tel2acp.log` from the card, it shows what happened.
+3. Run `uninstall`. Keep `custom-patches/TEL2ACP/tel2acp.log` from the card, it shows what happened.
 
 The boot guard only covers starting up. If the screen software ever crashed when you *press* TEL, it would come back with the patch still on.
 Then stop using TEL and run `uninstall` from the GEM screen.
@@ -128,7 +129,7 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
   M.I.B.'s NavActiveIgnore patch works the same way.
   If another mod (like the JOKERBTN patch) already uses `-Xbootclasspath/p:`, TEL2ACP joins that list instead of adding a second option, so both work.
 - Uses three small flag files in `/mnt/persist` (`tel2acp_pending`, `tel2acp_loaded`, `tel2acp_disabled`).
-- Saves the original `lsd.sh` as `lsd.sh.tel2acp.bak` on the unit and `TEL2ACP/backup/lsd.sh` on the card.
+- Saves the original `lsd.sh` as `lsd.sh.tel2acp.bak` on the unit and `custom-patches/TEL2ACP/backup/lsd.sh` on the card.
 
 `-force` installs anyway when the firmware doesn't match or no `sha1sum` tool is found. A damaged jar is never installed.
 
