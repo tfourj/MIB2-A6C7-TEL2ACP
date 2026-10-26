@@ -24,4 +24,7 @@ mkdir -p build/stubs build/classes
 "$JAVAC" -nowarn -source 1.3 -target 1.2 -cp build/stubs -d build/classes $(find src -name '*.java')
 
 "$JAR" cf TEL2ACP/TEL2ACP.jar -C build/classes .
-echo "built TEL2ACP/TEL2ACP.jar"
+
+# The installer compares this against the jar on the SD card and on the unit
+sha1sum TEL2ACP/TEL2ACP.jar | cut -d ' ' -f 1 > TEL2ACP/TEL2ACP.jar.sha1
+echo "built TEL2ACP/TEL2ACP.jar ($(cat TEL2ACP/TEL2ACP.jar.sha1))"
