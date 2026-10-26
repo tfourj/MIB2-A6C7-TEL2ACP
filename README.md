@@ -5,7 +5,7 @@ Makes the **TEL** button on an Audi MHI2 MMI open **Apple CarPlay** (or Android 
 | You press | Before | After |
 |---|---|---|
 | TEL | Phone menu | CarPlay, with the TEL key lit |
-| TEL while CarPlay is on screen | Phone menu | Phone menu |
+| TEL while CarPlay is on screen | Phone menu | Depends on the [TEL mode](#tel-modes), phone menu by default |
 
 All other buttons work as before. The TEL light only follows CarPlay when TEL opened it, not when CarPlay is opened from MENU or by the phone.
 
@@ -27,9 +27,9 @@ All other buttons work as before. The TEL light only follows CarPlay when TEL op
 |---|---|
 | `TEL2ACP.jar` | The patched `HardKeyManager` class |
 | `TEL2ACP.jar.sha1` | Checksum the installer uses to spot a damaged copy |
-| `tel2acp.sh` | Installer: `install`, `uninstall`, `restore`, `status`, `gem-on`, `gem-off` |
+| `tel2acp.sh` | Installer: `install`, `uninstall`, `restore`, `status`, `gem-on`, `gem-off`, `mode-tel`, `mode-carplay`, `mode-phone` |
 | `command.sh` | Hook that runs every patch in `custom-patches/` from M.I.B. (no SSH needed) |
-| `esd/` | Optional GEM screen with Status / Install / Uninstall / Restore buttons |
+| `esd/` | Optional GEM screen with Status, TEL mode, Install, Uninstall and Restore buttons |
 
 ## Install
 
@@ -58,8 +58,29 @@ The installer writes everything it does to `custom-patches/TEL2ACP/tel2acp.log` 
 on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh gem-on
 ```
 
-After a reboot, GEM has a **TEL2ACP** screen with Status, Install, Uninstall and Restore.
+After a reboot, GEM has a **TEL2ACP** screen with Status, the three TEL modes, Install, Uninstall and Restore.
 It only works while the SD card is in SD1. `command.sh` turns it on by default.
+
+## TEL modes
+
+TEL always opens CarPlay. The mode sets what TEL does while CarPlay is already on screen:
+
+| Mode | GEM button | Command | TEL while CarPlay is on screen |
+|---|---|---|---|
+| TEL / CarPlay (default) | Mode: TEL / CarPlay | `mode-tel` | Phone menu |
+| CarPlay only | Mode: CarPlay only | `mode-carplay` | Nothing |
+| CarPlay / Phone app | Mode: CarPlay / Phone app | `mode-phone` | The iPhone's Phone app in CarPlay |
+
+Switch with the GEM buttons, or over SSH:
+
+```sh
+on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh mode-phone
+```
+
+`mode-*` also works as an action in `mod/command.sh`, e.g. `CUSTOM_PATCHES="TEL2ACP mode-phone"`.
+The mode applies from the next TEL press, no reboot needed. `status` shows the current mode.
+
+In the Phone app mode, TEL opens the phone menu instead when Android Auto is on screen or no CarPlay phone is connected.
 
 ## Using it together with JOKERBTN
 
@@ -129,6 +150,7 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
   M.I.B.'s NavActiveIgnore patch works the same way.
   If another mod (like the JOKERBTN patch) already uses `-Xbootclasspath/p:`, TEL2ACP joins that list instead of adding a second option, so both work.
 - Uses three small flag files in `/mnt/persist` (`tel2acp_pending`, `tel2acp_loaded`, `tel2acp_disabled`).
+  The TEL mode is stored in `/mnt/persist/tel2acp_mode` (no file means TEL / CarPlay).
 - Saves the original `lsd.sh` as `lsd.sh.tel2acp.bak` on the unit and `custom-patches/TEL2ACP/backup/lsd.sh` on the card.
 
 `-force` installs anyway when the firmware doesn't match or no `sha1sum` tool is found. A damaged jar is never installed.
@@ -148,7 +170,8 @@ Set `JXE` to your `lsd.jxe` to also check the jar against the firmware (see [doc
 
 Every hard key goes through `de.audi.tghu.fwhmi.appmgr.HardKeyManager.triggerKeyEvent()`. TEL normally fires the state-machine event `HK_TEL` (103).
 The patched class fires `SWITCH_TO_TERMINAL_MODE` (1903) instead. The firmware already uses that event when a connected phone takes over the screen.
-If a CarPlay screen (240000–240009) is already showing, TEL fires `HK_TEL` as before.
+If a CarPlay screen (240000–240009) is already showing, the [TEL mode](#tel-modes) decides:
+`HK_TEL` as before, nothing, or `DSICarplay.requestUI(UI_PHONE)`, which asks the iPhone to show its Phone app.
 After opening CarPlay it lights the TEL key through `KbdService.setHKIlluminationExclusive`, the same call the phone screen uses.
 
 Full analysis: [docs/FINDINGS.md](docs/FINDINGS.md).

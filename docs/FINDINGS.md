@@ -147,6 +147,27 @@ CarPlay opened from the MENU tile or by the phone does not go through `HardKeyMa
 
 This is implemented in [`src/de/audi/tghu/fwhmi/appmgr/HardKeyManager.java`](../src/de/audi/tghu/fwhmi/appmgr/HardKeyManager.java).
 
+### TEL modes and the iPhone's Phone app
+
+What TEL does while a terminal mode screen is shown comes from `/mnt/persist/tel2acp_mode`, read at every TEL press:
+no file or `tel` fires `HK_TEL` (phone menu), `carplay` does nothing, `phone` asks the iPhone for its Phone app.
+
+The CarPlay DSI can do that:
+
+- `org.dsi.ifc.carplay.DSICarplay.requestUI(int)` with `UI_HOME = 1`, `UI_PHONE = 2`, `UI_NAVIGATION = 3`, `UI_MEDIA = 4`, `UI_MEDIA_NOWPLAYING = 5`.
+  This is the head unit side of CarPlay's "request UI".
+- The HMI never calls it in normal use. The only caller is the diagnosis command `requestUI` in
+  `CarplayDSILifecycleController.executeDiagCommand`, which always sends `0`.
+- The service is `de.esolutions.fw.dsi.carplay.DSICarplayProvider`, registered in OSGi under `org.dsi.ifc.carplay.DSICarplay`.
+  The terminal mode app finds it the same way (`createServiceTracker(DSICarplay.class)`).
+  `IFrameworkAccess.getBundleCxt()` gives `HardKeyManager` the BundleContext to look it up.
+  The provider is a plain service object, so `getService`/`ungetService` around one call is safe.
+
+CarPlay and Android Auto share screen 240000, so the screen id can't tell them apart.
+`ICoreSystemModelBank.ACTIVE_SMARTPHONE_DEVICE_CHOICE (1122)` can: `TMDeviceControl` sets it to 1 for an active CarPlay device,
+2 for Android Auto, 3 for others and 0 when none is active. The patch only sends `requestUI` when it is 1,
+and fires `HK_TEL` when it isn't or when anything throws.
+
 Build notes:
 
 - It is compiled against stub classes for `IFrameworkAccess`, `HMIService`, `KbdService`, `ButtonModel` and `LogChannel` (only the signatures used).
@@ -181,6 +202,8 @@ Build notes:
 - The `getCurrentScreenID() / 10000 == 24` check comes from `TerminalModeHMIApplication.getId() = 24`
   and `TerminalModeScreenFactory.createScreen()`, which builds screens 240000 (CarPlay/AA view) to 240009 (240002 is "no device").
   It has not been seen on a running unit yet.
+- The Phone app mode has not been tested on the car. The native CarPlay process isn't in the backup in readable form,
+  so it is unverified that it turns `UI_PHONE` into the iPhone's Phone app.
 - Long-press TEL, steering-wheel phone buttons (`MFL_*`) and voice (`SDS`) use other paths and are not affected.
 - Only valid for this firmware (`K3663`). Other trains may number things differently.
 

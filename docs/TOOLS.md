@@ -139,6 +139,7 @@ It compares the firmware against the K3663 reference in `compat_ref.json` and ch
 - `HardKeyManager` has the same code. If not, it lists each key that behaves differently.
 - `checkrefs.py` passes for `TEL2ACP/TEL2ACP.jar` (or `--jar`)
 - the ids the jar hardcodes: `HK_TEL`, `SWITCH_TO_TERMINAL_MODE`, CarPlay app id 24 and its screens, TEL light key 4
+- the phone mode ids: model 1122, CarPlay device value 1, `DSICarplay.UI_PHONE` 2
 - `SWITCH_TO_TERMINAL_MODE` has an unguarded transition from a parent of the phone screen
 
 | Verdict | Exit | Meaning |
