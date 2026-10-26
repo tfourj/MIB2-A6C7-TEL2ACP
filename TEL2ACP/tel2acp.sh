@@ -1,11 +1,12 @@
 #!/bin/sh
 #
-# TEL2ACP v1.0.0 - the TEL hard key opens Apple CarPlay
+# TEL2ACP v1.1.0 - the TEL hard key opens Apple CarPlay
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
 # Usage: tel2acp.sh <command> [-force]
-#   install     copy TEL2ACP.jar to the unit and add it to lsd.sh
-#   uninstall   remove the lsd.sh line, the jar and the GEM screen
+#   install     copy TEL2ACP.jar to the unit and add the boot guard block to lsd.sh
+#               (also re-arms the patch after the boot guard disabled it)
+#   uninstall   remove the lsd.sh block, the jar, the flags and the GEM screen
 #   restore     put back the lsd.sh backup made on first install
 #   status      show what is installed
 #   gem-on      add the TEL2ACP screen to the GEM (green engineering menu)
@@ -15,7 +16,7 @@
 # Runs on the MMI (QNX). Start it over SSH, from the M.I.B. launcher hook
 # (mod/command.sh) or from the TEL2ACP GEM screen. Reboot the MMI afterwards.
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
@@ -40,6 +41,12 @@ JAR_NAME="TEL2ACP.jar"
 ESD_SRC="$PKG/esd/TEL2ACP.esd"
 ESD_LINK="$HMI/engdefs/z_TEL2ACP.esd"
 MARKER="#TEL2ACP"
+
+# Boot guard flags. lsd.sh and the patched class see /mnt/persist on the MMX
+PERSIST="/net/mmx/mnt/persist"
+FLAG_PENDING="$PERSIST/tel2acp_pending"
+FLAG_LOADED="$PERSIST/tel2acp_loaded"
+FLAG_DISABLED="$PERSIST/tel2acp_disabled"
 
 # sha1 of lsd.jxe on MHI2_ER_AU57x_K3663_1 (MU1425), the firmware the patch was built from
 SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"
@@ -119,25 +126,57 @@ check_lsd_sh() {
 	fi
 }
 
-# The line added in front of the J9 start line in lsd.sh
-patch_line() {
-	if grep -q 'BASE_DIR' "$LSD_SH"; then
-		jar_path='$BASE_DIR/lsd/jars/'"$JAR_NAME"
-	else
-		jar_path="/mnt/app/eso/hmi/lsd/jars/$JAR_NAME"
+check_jar() {
+	expected=$(cat "$PKG/$JAR_NAME.sha1" 2> /dev/null)
+	[ -n "$expected" ] || die "$PKG/$JAR_NAME.sha1 is missing on the SD card"
+	sum=$(sha1_of "$1")
+	if [ -z "$sum" ]; then
+		[ $FORCE = 1 ] || die "no sha1sum tool found to check $1 (use -force to skip)"
+		log "WARNING: jar check skipped"
+		return 0
 	fi
-	out 'BOOTCLASSPATH="$BOOTCLASSPATH -Xbootclasspath/p:'"$jar_path"'" '"$MARKER"
+	[ "$sum" = "$expected" ]
 }
 
-insert_patch_line() {
+check_persist() {
+	[ -d "$PERSIST" ] || die "$PERSIST not found, the boot guard needs it"
+	( : > "$PERSIST/tel2acp_test" ) 2> /dev/null || die "$PERSIST is not writable, the boot guard needs it"
+	rm -f "$PERSIST/tel2acp_test"
+}
+
+clear_flags() {
+	rm -f "$FLAG_PENDING" "$FLAG_LOADED" "$FLAG_DISABLED" 2> /dev/null
+}
+
+# The block added in front of the J9 start line in lsd.sh. It runs on the MMX
+# at every HMI start. It loads the jar only after leaving a pending flag; the
+# patched class deletes that flag once it has loaded. A flag still there on
+# the next start means that start failed, so the patch is disabled.
+patch_block() {
+	m="$MARKER"
+	out "# TEL2ACP boot guard, managed by tel2acp.sh $m"
+	out "TEL2ACP_JAR=/eso/hmi/lsd/jars/$JAR_NAME $m"
+	out "TEL2ACP_FLAG=/mnt/persist/tel2acp $m"
+	out 'if [ -f $TEL2ACP_JAR ] && [ ! -f ${TEL2ACP_FLAG}_disabled ]; then '"$m"
+	out '	rm -f ${TEL2ACP_FLAG}_loaded '"$m"
+	out '	if [ -f ${TEL2ACP_FLAG}_pending ]; then '"$m"
+	out '		( : > ${TEL2ACP_FLAG}_disabled ) 2> /dev/null '"$m"
+	out '		rm -f ${TEL2ACP_FLAG}_pending '"$m"
+	out '	elif ( : > ${TEL2ACP_FLAG}_pending ) 2> /dev/null; then '"$m"
+	out '		BOOTCLASSPATH="$BOOTCLASSPATH -Xbootclasspath/p:$TEL2ACP_JAR" '"$m"
+	out '	fi '"$m"
+	out 'fi '"$m"
+}
+
+insert_patch_block() {
 	tmp="$LSD_SH.tel2acp.tmp"
-	line=$(patch_line)
+	block=$(patch_block)
 	inserted=0
 	while IFS= read -r l || [ -n "$l" ]; do
 		case "$l" in
 			'$J9'*)
 				if [ $inserted = 0 ]; then
-					out "$line"
+					out "$block"
 					inserted=1
 				fi
 				;;
@@ -177,16 +216,23 @@ do_install() {
 	log "== install (TEL2ACP $VERSION)"
 	check_not_busy
 	[ -f "$PKG/$JAR_NAME" ] || die "$PKG/$JAR_NAME is missing on the SD card"
+	check_jar "$PKG/$JAR_NAME" || die "$PKG/$JAR_NAME is damaged (checksum mismatch), copy it to the SD card again"
 	check_firmware
 	check_lsd_sh
+	check_persist
 
 	mount_rw
 	mkdir -p "$JARS" 2> /dev/null
 	cp "$PKG/$JAR_NAME" "$JARS/$JAR_NAME" || die "could not copy $JAR_NAME to $JARS"
+	if ! check_jar "$JARS/$JAR_NAME"; then
+		rm -f "$JARS/$JAR_NAME"
+		die "copied $JAR_NAME does not match the checksum, removed it again"
+	fi
 	log "copied $JAR_NAME to $JARS"
 
 	if is_patched; then
-		log "lsd.sh already patched"
+		# Replace an older TEL2ACP block with the current one
+		remove_patch_lines || die "could not update the lsd.sh block, use 'restore'"
 	else
 		if [ ! -f "$LSD_BAK" ]; then
 			cp "$LSD_SH" "$LSD_BAK" || die "could not back up lsd.sh, nothing changed"
@@ -194,10 +240,11 @@ do_install() {
 		fi
 		mkdir -p "$PKG/backup" 2> /dev/null
 		[ -f "$PKG/backup/lsd.sh" ] || cp "$LSD_SH" "$PKG/backup/lsd.sh" 2> /dev/null
-		insert_patch_line || die "could not patch lsd.sh, it was left unchanged"
-		log "lsd.sh patched"
 	fi
+	insert_patch_block || die "could not patch lsd.sh, it was left unchanged"
+	log "lsd.sh patched with boot guard"
 
+	clear_flags
 	mount_ro
 	log "done, reboot the MMI to activate"
 }
@@ -210,7 +257,7 @@ do_uninstall() {
 	mount_rw
 	if is_patched; then
 		remove_patch_lines || die "could not clean lsd.sh, use 'restore' instead"
-		log "lsd.sh line removed"
+		log "lsd.sh block removed"
 	else
 		log "lsd.sh is not patched"
 	fi
@@ -218,6 +265,7 @@ do_uninstall() {
 		rm -f "$JARS/$JAR_NAME" && log "$JAR_NAME removed"
 	fi
 	remove_gem_link
+	clear_flags
 	mount_ro
 	log "done, reboot the MMI to deactivate"
 }
@@ -232,6 +280,7 @@ do_restore() {
 	log "lsd.sh restored from $LSD_BAK"
 	rm -f "$JARS/$JAR_NAME"
 	remove_gem_link
+	clear_flags
 	mount_ro
 	log "done, reboot the MMI"
 }
@@ -247,7 +296,25 @@ do_status() {
 		log "firmware:   NOT supported (lsd.jxe sha1 $sum)"
 	fi
 	if is_patched; then log "lsd.sh:     patched"; else log "lsd.sh:     not patched"; fi
-	if [ -f "$JARS/$JAR_NAME" ]; then log "jar:        installed"; else log "jar:        not installed"; fi
+	jar_sum=$(sha1_of "$JARS/$JAR_NAME")
+	if [ ! -f "$JARS/$JAR_NAME" ]; then
+		log "jar:        not installed"
+	elif [ -z "$jar_sum" ]; then
+		log "jar:        installed (not checked, no sha1sum tool)"
+	elif [ "$jar_sum" = "$(cat "$PKG/$JAR_NAME.sha1" 2> /dev/null)" ]; then
+		log "jar:        installed"
+	else
+		log "jar:        installed but different from the SD card copy, run install again"
+	fi
+	if [ -f "$FLAG_DISABLED" ]; then
+		log "boot guard: DISABLED the patch after a failed start, run install to re-arm"
+	elif [ -f "$FLAG_LOADED" ]; then
+		log "boot guard: patch loaded on the last start"
+	elif [ -f "$FLAG_PENDING" ]; then
+		log "boot guard: start in progress, or the last start failed"
+	else
+		log "boot guard: no start since install"
+	fi
 	if [ -f "$LSD_BAK" ]; then log "backup:     $LSD_BAK"; else log "backup:     none"; fi
 	if [ -L "$ESD_LINK" ] || [ -f "$ESD_LINK" ]; then log "GEM screen: on"; else log "GEM screen: off"; fi
 }
