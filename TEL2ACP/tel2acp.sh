@@ -287,6 +287,50 @@ remove_gem_link() {
 	fi
 }
 
+# Puts [x] in front of the label of the entry that runs esd/<prefix>-<selected>.sh
+# and [ ] in front of the other <prefix>-* entries. GEM reads the file when it
+# loads its screens, so it may only show the new marks after an MMI reboot.
+mark_esd() {
+	file="$1"
+	prefix="$2"
+	selected="$3"
+	tmp="$file.tmp"
+	mark=""
+	while IFS= read -r l || [ -n "$l" ]; do
+		case "$l" in
+			*"esd/$prefix-"*'.sh"'*)
+				name="${l##*esd/$prefix-}"
+				name="${name%%.sh*}"
+				if [ "$name" = "$selected" ]; then mark="[x]"; else mark="[ ]"; fi
+				out "$l"
+				;;
+			*label*'"'*)
+				if [ -n "$mark" ]; then
+					text="${l#*\"}"
+					text="${text%\"*}"
+					case "$text" in
+						"[x] "*|"[ ] "*) text="${text#????}" ;;
+					esac
+					out "${l%%\"*}\"$mark $text\""
+					mark=""
+				else
+					out "$l"
+				fi
+				;;
+			*) out "$l" ;;
+		esac
+	done < "$file" > "$tmp" && cp "$tmp" "$file"
+	rm -f "$tmp" 2> /dev/null
+}
+
+refresh_marks() {
+	{
+		mark_esd "$ESD_SRC" mode "$(current_mode)" &&
+		mark_esd "$ESD_CUSTOM_SRC" custom "$(current_custom)"
+	} 2> /dev/null || { log "WARNING: could not update the [x] marks in the GEM screens"; return; }
+	log "GEM [x] marks updated, GEM may only show them after an MMI reboot"
+}
+
 link_esd() {
 	rm -f "$2" 2> /dev/null
 	ln -s "$1" "$2" 2> /dev/null || on -f mmx ln -s "$1" "$2" 2> /dev/null
@@ -413,6 +457,7 @@ do_mode() {
 		( echo "$1" > "$MODE_FILE" ) 2> /dev/null || die "could not write $MODE_FILE"
 	fi
 	[ "$(current_mode)" = "$1" ] || die "could not set the TEL mode"
+	refresh_marks
 	log "TEL mode set to $(mode_text "$1"), no reboot needed"
 	if [ "$1" = custom ]; then
 		log "CarPlay Custom is $(custom_text "$(current_custom)")"
@@ -425,6 +470,7 @@ do_custom() {
 	[ -d "$PERSIST" ] || die "$PERSIST not found"
 	( echo "$1" > "$CUSTOM_FILE" ) 2> /dev/null || die "could not write $CUSTOM_FILE"
 	[ "$(current_custom)" = "$1" ] || die "could not set CarPlay Custom"
+	refresh_marks
 	log "CarPlay Custom set to $(custom_text "$1"), no reboot needed"
 	[ "$(current_mode)" = custom ] || log "TEL mode is $(mode_text "$(current_mode)"), set CarPlay / CarPlay Custom to use it"
 }
@@ -433,6 +479,7 @@ do_gem_on() {
 	log "== gem-on"
 	[ -f "$ESD_SRC" ] || die "$ESD_SRC is missing on the SD card"
 	[ -f "$ESD_CUSTOM_SRC" ] || die "$ESD_CUSTOM_SRC is missing on the SD card"
+	refresh_marks
 	mount_rw
 	link_esd "$ESD_SRC" "$ESD_LINK"
 	link_esd "$ESD_CUSTOM_SRC" "$ESD_CUSTOM_LINK"
