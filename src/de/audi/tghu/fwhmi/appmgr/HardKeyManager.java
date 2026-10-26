@@ -1,5 +1,8 @@
 package de.audi.tghu.fwhmi.appmgr;
 
+import java.io.File;
+import java.io.FileOutputStream;
+
 import de.audi.atip.base.IFrameworkAccess;
 import de.audi.atip.hmi.HMIService;
 import de.audi.atip.hmi.model.ButtonModel;
@@ -16,6 +19,11 @@ import de.audi.atip.log.LogChannel;
  *
  * Loaded ahead of lsd.jxe with -Xbootclasspath/p:, so fields and method
  * signatures must stay identical to the original class.
+ *
+ * Boot guard: lsd.sh creates /mnt/persist/tel2acp_pending before starting
+ * the HMI with this class. The constructor deletes it, which tells the next
+ * lsd.sh run that this class loaded fine. If the flag is still there on the
+ * next start, lsd.sh disables the patch and starts the stock HMI.
  */
 public class HardKeyManager {
 
@@ -51,6 +59,10 @@ public class HardKeyManager {
     private static final int LOG_UNKNOWN_KEY = 1265;
     private static final int LOG_FIRE_SM_EVENT = 1266;
 
+    // Boot guard flags, shared with the lsd.sh block written by tel2acp.sh
+    private static final String FLAG_PENDING = "/mnt/persist/tel2acp_pending";
+    private static final String FLAG_LOADED = "/mnt/persist/tel2acp_loaded";
+
     private final IFrameworkAccess framework;
     private final LogChannel logChannel;
     private final ButtonModel[] hardkeys;
@@ -62,6 +74,7 @@ public class HardKeyManager {
         for (int i = 0; i < HARDKEY_COUNT; i++) {
             this.hardkeys[i] = new ButtonModel(i + 1);
         }
+        confirmBoot();
     }
 
     public void triggerKeyEvent(int terminalId, int key) {
@@ -145,6 +158,16 @@ public class HardKeyManager {
             fireSMEvent(terminalId, HK_TEL);
         } else {
             fireSMEvent(terminalId, SWITCH_TO_TERMINAL_MODE);
+        }
+    }
+
+    /** Tells the lsd.sh boot guard that the patched class loaded. Never throws. */
+    private static void confirmBoot() {
+        try {
+            new File(FLAG_PENDING).delete();
+            new FileOutputStream(FLAG_LOADED).close();
+        } catch (Throwable t) {
+            // The guard only disables the patch, so a failed write must not stop the HMI
         }
     }
 
