@@ -416,14 +416,6 @@ do_restore() {
 
 do_status() {
 	log "== status (TEL2ACP $VERSION)"
-	sum=$(sha1_of "$LSD_JXE")
-	if [ -z "$sum" ]; then
-		log "firmware:   unknown (no sha1sum tool)"
-	elif [ "$sum" = "$SUPPORTED_JXE_SHA1" ]; then
-		log "firmware:   supported (MHI2_ER_AU57x_K3663_1)"
-	else
-		log "firmware:   NOT supported (lsd.jxe sha1 $sum)"
-	fi
 	if is_patched; then log "lsd.sh:     patched"; else log "lsd.sh:     not patched"; fi
 	jar_sum=$(sha1_of "$JARS/$JAR_NAME")
 	if [ ! -f "$JARS/$JAR_NAME" ]; then
@@ -448,6 +440,17 @@ do_status() {
 	log "custom:     CarPlay $(custom_text "$(current_custom)")"
 	if [ -f "$LSD_BAK" ]; then log "backup:     $LSD_BAK"; else log "backup:     none"; fi
 	if [ -L "$ESD_LINK" ] || [ -f "$ESD_LINK" ]; then log "GEM screen: on"; else log "GEM screen: off"; fi
+
+	# Last, because the checksum of the 45 MB lsd.jxe takes a while
+	log "firmware:   checking, this can take a minute..."
+	sum=$(sha1_of "$LSD_JXE")
+	if [ -z "$sum" ]; then
+		log "firmware:   unknown (no sha1sum tool)"
+	elif [ "$sum" = "$SUPPORTED_JXE_SHA1" ]; then
+		log "firmware:   supported (MHI2_ER_AU57x_K3663_1)"
+	else
+		log "firmware:   NOT supported (lsd.jxe sha1 $sum)"
+	fi
 }
 
 do_mode() {
