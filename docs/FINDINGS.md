@@ -147,6 +147,8 @@ Build notes:
   `-Xbootclasspath/p:` puts the jar ahead of `lsd.jxe`, so its classes win.
 - On AU57x, `installjava -navignoreon` refuses to install NavIgnore ("old internal java structure").
   That refers to the NavIgnore classes, not to the bootclasspath mechanism.
+- MU1425's `lsd.sh` (read from the M.I.B. `app.img` backup) has no `$J9` line. It starts the VM with
+  `on -p 12 /ifs/jre/bin/j9 $VMOPTIONS -Xbootclasspath:$BOOTCLASSPATH -jxe:$LSD_DIR/lsd.jxe &`, so `installjava`'s `^$J9` sed matches nothing here.
 - `TEL2ACP/tel2acp.sh` adds its own marked block for `lsd/jars/TEL2ACP.jar` the same way, and keeps `lsd.sh.tel2acp.bak` as the restore point.
 - The unit's own system dump (`01_Export_.../MMXcore/info`) shows the real HMI start line:
   `/ifs/jre/bin/j9 ... -Xbootclasspath::/ifs/lsd.jxe:/eso/hmi/lsd/jars/lang_data.zip:...:/eso/hmi/lsd/jars/AppDevelopment.jar:... -jxe:/ifs/lsd.jxe`.
