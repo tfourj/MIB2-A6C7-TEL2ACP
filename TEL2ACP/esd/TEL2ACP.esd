@@ -10,6 +10,18 @@ script
    label    "Status"
 
 script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/mode-tel.sh"
+   label    "Mode: TEL / CarPlay"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/mode-carplay.sh"
+   label    "Mode: CarPlay only"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/mode-phone.sh"
+   label    "Mode: CarPlay / Phone app"
+
+script
    value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/install.sh"
    label    "Install TEL -> CarPlay"
 
