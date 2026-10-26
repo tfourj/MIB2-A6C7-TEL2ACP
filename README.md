@@ -156,3 +156,7 @@ Usage is in [docs/TOOLS.md](docs/TOOLS.md).
 
 - M.I.B. by MIBonk and MIB-Wiki, for the SD card toolkit and the `-Xbootclasspath/p:` approach.
 - zrnec and mrfixpl in [jilleb/mib2-toolbox#283](https://github.com/jilleb/mib2-toolbox/issues/283), for the first findings on Audi button mapping.
+
+> [!NOTE]
+> AI was used to explore the firmware, find the key handling and CarPlay entry points, and write the patch, installer and analysis tools.
+> Treat the results like any other untested community patch.
