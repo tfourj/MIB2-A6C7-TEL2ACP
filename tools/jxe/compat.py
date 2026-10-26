@@ -12,6 +12,7 @@ compat_ref.json) and checks:
 - the CarPlay app id and screen range the jar uses
 - the System state machine: SWITCH_TO_TERMINAL_MODE works from the phone screen
 - the TEL key light id used by the phone state machine
+- the model and DSI ids the phone mode uses
 - optionally the lsd.sh start line layout the installer needs
 
 Verdict and exit status: 0 the jar fits, 1 the patch needs a rebuild for this
@@ -51,6 +52,12 @@ EVENTS = {"HK_TEL": 103, "SWITCH_TO_TERMINAL_MODE": 1903}
 TERMINAL_APP_ID = 24
 SCREEN_APP_DIVISOR = 10000
 TEL_LIGHT_KEY = 4
+# Phone mode: (class, field, value) the jar hardcodes to open the iPhone's Phone app
+PHONE_MODE_IDS = [
+    ("de/audi/atip/model/ICoreSystemModelBank", "ACTIVE_SMARTPHONE_DEVICE_CHOICE", 1122),
+    ("de/audi/app/terminalmode/device/TMDeviceControl", "ACTIVE_DEVICE_CARPLAY", 1),
+    ("org/dsi/ifc/carplay/DSICarplay", "UI_PHONE", 2),
+]
 
 # J9 keeps its own flags above the Java access bits; they don't change behaviour
 JAVA_MODIFIER_MASK = 0xFFFF
@@ -334,6 +341,19 @@ def check_light(img, report):
         report.rebuild("phone state machine lights key(s) %s, the jar uses %d" % (keys, TEL_LIGHT_KEY))
 
 
+def check_phone_mode(img, report):
+    print("Phone mode (TEL opens the iPhone's Phone app)")
+    for name, field, value in PHONE_MODE_IDS:
+        short = "%s.%s" % (name.split("/")[-1], field)
+        found = int_fields(img, name).get(field) if img.has(name) else None
+        if found is None:
+            report.warn("%s not found, phone mode falls back to the phone menu" % short)
+        elif found != value:
+            report.rebuild("%s is %d here, the jar uses %d" % (short, found, value))
+        else:
+            report.ok("%s = %d" % (short, value))
+
+
 def check_lsd_sh(path, report):
     """Same rules as is_j9_line/check_lsd_sh in tel2acp.sh."""
     print("lsd.sh (%s)" % path)
@@ -389,6 +409,7 @@ def main():
     check_constants(img, report)
     check_state_machine(img, ref, report)
     check_light(img, report)
+    check_phone_mode(img, report)
     if args.lsd_sh:
         check_lsd_sh(args.lsd_sh, report)
 
