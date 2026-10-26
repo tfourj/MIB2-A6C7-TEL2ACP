@@ -158,7 +158,8 @@ Build notes:
 
 ## Risks and things not verified
 
-- **Not tested on the car.** Everything above comes from static analysis of this unit's `lsd.jxe`.
+- **Tested on this car only.** TEL opens CarPlay after installing from GEM → M.I.B. → individual script and rebooting.
+  Everything above comes from static analysis of this unit's `lsd.jxe`.
 - If the replacement class is wrong (missing method, wrong signature, bad class version), the HMI (`lsd`) can fail to start.
   That means a black screen and no GEM. **Have SSH or another way to restore `lsd.sh` / delete the jar before testing.**
 - Behaviour with no CarPlay phone connected is unknown. State 246 picks substate 248 or 249 based on `STATE_TERMINAL_MODE_CHOICE (1105)`.
