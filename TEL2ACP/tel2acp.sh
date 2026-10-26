@@ -296,6 +296,7 @@ mark_esd() {
 	selected="$3"
 	tmp="$file.tmp"
 	mark=""
+	[ -f "$file" ] || return 1
 	while IFS= read -r l || [ -n "$l" ]; do
 		case "$l" in
 			*"esd/$prefix-"*'.sh"'*)
@@ -320,7 +321,9 @@ mark_esd() {
 			*) out "$l" ;;
 		esac
 	done < "$file" > "$tmp" && cp "$tmp" "$file"
+	rc=$?
 	rm -f "$tmp" 2> /dev/null
+	return $rc
 }
 
 refresh_marks() {
