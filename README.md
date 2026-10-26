@@ -91,6 +91,8 @@ on -f rcc /net/mmx/fs/sda0/custom-patches/TEL2ACP/tel2acp.sh custom-music
 
 `mode-*` and `custom-*` also work as actions in `mod/command.sh`, e.g. `CUSTOM_PATCHES="TEL2ACP mode-custom custom-music"`.
 Changes apply from the next TEL press, no reboot needed. `status` shows the mode and CarPlay Custom.
+The GEM buttons also get an `[x]` in front of the selected mode and CarPlay Custom screen.
+GEM may only show a new `[x]` after an MMI reboot; Status is always up to date.
 The 1.1.0 `mode-phone` setting carries over as CarPlay / CarPlay Custom with Phone.
 
 In the CarPlay Custom mode, TEL opens the phone menu instead when Android Auto is on screen or no CarPlay phone is connected.

@@ -208,6 +208,10 @@ Build notes:
   and have not been tested yet.
 - The Set_CarPlay_Custom GEM submenu (`screen Set_CarPlay_Custom TEL2ACP` in its own esd file) has not been seen on the car yet.
   If it doesn't show up, the `custom-*` commands still work over SSH or `mod/command.sh`.
+  GEM decides where the submenu sits in the TEL2ACP screen; the esd file has no way to place it.
+- GEM can only show live values from persistence (`keyValue`/`BIOSCtrl` with `per <partition> <key>`), not from files.
+  So the selected mode is shown by rewriting the button labels with `[x]` in the esd files on the SD card.
+  GEM is a native process (not in `lsd.jxe`), so it is unknown whether it rereads the files before the next MMI reboot.
 - Long-press TEL, steering-wheel phone buttons (`MFL_*`) and voice (`SDS`) use other paths and are not affected.
 - Only valid for this firmware (`K3663`). Other trains may number things differently.
 
