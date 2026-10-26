@@ -60,6 +60,14 @@ on -f rcc /net/mmx/fs/sda0/TEL2ACP/tel2acp.sh gem-on
 After a reboot, GEM has a **TEL2ACP** screen with Status, Install, Uninstall and Restore.
 It only works while the SD card is in SD1. `command.sh` turns it on by default.
 
+## Using it together with JOKERBTN
+
+TEL2ACP and JOKERBTN (the steering wheel star button skip fix) can be installed together, in any order. Each adds its own marked block to `lsd.sh`,
+and both jars go into one shared `-Xbootclasspath/p:` list. Each has its own boot guard.
+
+`uninstall` removes only that patch's block. Use `uninstall` rather than `restore` when both are installed:
+`restore` puts back `lsd.sh` as it was before that patch's first install, which can also remove the other patch's block.
+
 ## Uninstall
 
 ```sh
