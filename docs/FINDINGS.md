@@ -116,7 +116,7 @@ The class must keep the same fields and methods, because it fully replaces the o
 - methods `<init>(IFrameworkAccess, LogChannel)`, `triggerKeyEvent(II)V`, `getModels()`, `getModel(I)`, `getModel(II)`,
   plus private `fireSMEvent(II)V`, `getHmiService()`, `getLogChannel()`
 
-Case 4 opens CarPlay, and if CarPlay is already on screen, fall back to the normal phone menu (TEL pressed twice → native phone):
+Case 4 opens CarPlay, and if CarPlay is already on screen, it falls back to the normal phone menu (TEL pressed twice → native phone):
 
 ```java
 case 4:
