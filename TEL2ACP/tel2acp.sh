@@ -30,6 +30,9 @@ esac
 
 LOG="$PKG/tel2acp.log"
 
+# GEM scripts see the SD card read-only, the M.I.B. launcher remounts it the same way
+mount -uw "${PKG%/*}" 2> /dev/null
+
 APP_MOUNT="/net/mmx/mnt/app"
 HMI="$APP_MOUNT/eso/hmi"
 LSD_SH="$HMI/lsd/lsd.sh"
@@ -64,7 +67,7 @@ fi
 
 log() {
 	echo "$*"
-	echo "$*" >> "$LOG" 2> /dev/null
+	{ echo "$*" >> "$LOG"; } 2> /dev/null
 }
 
 die() {
