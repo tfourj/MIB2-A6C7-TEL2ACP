@@ -1,22 +1,26 @@
 #!/bin/sh
 #
-# TEL2ACP v1.0.0 - the TEL hard key opens Apple CarPlay
+# TEL2ACP v1.1.0 - the TEL hard key opens Apple CarPlay
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
 # Usage: tel2acp.sh <command> [-force]
-#   install     copy TEL2ACP.jar to the unit and add the boot guard block to lsd.sh
-#               (also re-arms the patch after the boot guard disabled it)
-#   uninstall   remove the lsd.sh block, the jar, the flags and the GEM screen
-#   restore     put back the lsd.sh backup made on first install
-#   status      show what is installed
-#   gem-on      add the TEL2ACP screen to the GEM (green engineering menu)
-#   gem-off     remove the TEL2ACP screen from the GEM
-#   -force      install even if the firmware fingerprint does not match
+#   install       copy TEL2ACP.jar to the unit and add the boot guard block to lsd.sh
+#                 (also re-arms the patch after the boot guard disabled it)
+#   uninstall     remove the lsd.sh block, the jar, the flags and the GEM screen
+#   restore       put back the lsd.sh backup made on first install
+#   status        show what is installed
+#   gem-on        add the TEL2ACP screen to the GEM (green engineering menu)
+#   gem-off       remove the TEL2ACP screen from the GEM
+#   mode-tel      TEL while CarPlay is on screen opens the phone menu (default)
+#   mode-carplay  TEL only ever opens CarPlay
+#   mode-phone    TEL while CarPlay is on screen opens the iPhone's Phone app
+#   -force        install even if the firmware fingerprint does not match
 #
 # Runs on the MMI (QNX). Start it over SSH, from the M.I.B. launcher hook
-# (mod/command.sh) or from the TEL2ACP GEM screen. Reboot the MMI afterwards.
+# (mod/command.sh) or from the TEL2ACP GEM screen. Reboot the MMI after
+# install, uninstall and restore. The mode-* commands work right away.
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
@@ -51,6 +55,9 @@ PERSIST="/net/mmx/mnt/persist"
 FLAG_PENDING="$PERSIST/tel2acp_pending"
 FLAG_LOADED="$PERSIST/tel2acp_loaded"
 FLAG_DISABLED="$PERSIST/tel2acp_disabled"
+
+# TEL mode (tel, carplay or phone). The patched class reads it at every TEL press
+MODE_FILE="$PERSIST/tel2acp_mode"
 
 # sha1 of lsd.jxe on MHI2_ER_AU57x_K3663_1 (MU1425), the firmware the patch was built from
 SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"
@@ -167,6 +174,22 @@ check_persist() {
 
 clear_flags() {
 	rm -f "$FLAG_PENDING" "$FLAG_LOADED" "$FLAG_DISABLED" 2> /dev/null
+}
+
+current_mode() {
+	mode=$(cat "$MODE_FILE" 2> /dev/null)
+	case "$mode" in
+		carplay|phone) echo "$mode" ;;
+		*) echo "tel" ;;
+	esac
+}
+
+mode_text() {
+	case "$1" in
+		carplay) echo "CarPlay only" ;;
+		phone) echo "CarPlay / iPhone Phone app" ;;
+		*) echo "TEL / CarPlay" ;;
+	esac
 }
 
 # The block added in front of the J9 start line in lsd.sh. It runs on the MMX
@@ -288,6 +311,7 @@ do_uninstall() {
 	fi
 	remove_gem_link
 	clear_flags
+	rm -f "$MODE_FILE" 2> /dev/null
 	mount_ro
 	log "done, reboot the MMI to deactivate"
 }
@@ -303,6 +327,7 @@ do_restore() {
 	rm -f "$JARS/$JAR_NAME"
 	remove_gem_link
 	clear_flags
+	rm -f "$MODE_FILE" 2> /dev/null
 	mount_ro
 	log "done, reboot the MMI"
 }
@@ -337,8 +362,21 @@ do_status() {
 	else
 		log "boot guard: no start since install"
 	fi
+	log "TEL mode:   $(mode_text "$(current_mode)")"
 	if [ -f "$LSD_BAK" ]; then log "backup:     $LSD_BAK"; else log "backup:     none"; fi
 	if [ -L "$ESD_LINK" ] || [ -f "$ESD_LINK" ]; then log "GEM screen: on"; else log "GEM screen: off"; fi
+}
+
+do_mode() {
+	log "== mode-$1"
+	[ -d "$PERSIST" ] || die "$PERSIST not found"
+	if [ "$1" = tel ]; then
+		rm -f "$MODE_FILE" 2> /dev/null
+	else
+		( echo "$1" > "$MODE_FILE" ) 2> /dev/null || die "could not write $MODE_FILE"
+	fi
+	[ "$(current_mode)" = "$1" ] || die "could not set the TEL mode"
+	log "TEL mode set to $(mode_text "$1"), no reboot needed"
 }
 
 do_gem_on() {
@@ -369,9 +407,13 @@ case "$cmd" in
 	status) do_status ;;
 	gem-on) do_gem_on ;;
 	gem-off) do_gem_off ;;
+	mode-tel) do_mode tel ;;
+	mode-carplay) do_mode carplay ;;
+	mode-phone) do_mode phone ;;
 	*)
 		echo "TEL2ACP $VERSION"
 		echo "Usage: $0 install [-force] | uninstall | restore | status | gem-on | gem-off"
+		echo "       $0 mode-tel | mode-carplay | mode-phone"
 		exit 1
 		;;
 esac
