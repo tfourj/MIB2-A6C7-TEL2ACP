@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# TEL2ACP v1.1.0 - the TEL hard key opens Apple CarPlay
+# TEL2ACP v1.2.0 - the TEL hard key opens Apple CarPlay
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
 # Usage: tel2acp.sh <command> [-force]
@@ -11,16 +11,17 @@
 #   status        show what is installed
 #   gem-on        add the TEL2ACP screen to the GEM (green engineering menu)
 #   gem-off       remove the TEL2ACP screen from the GEM
-#   mode-tel      TEL while CarPlay is on screen opens the phone menu (default)
-#   mode-carplay  TEL only ever opens CarPlay
-#   mode-phone    TEL while CarPlay is on screen opens the iPhone's Phone app
+#   mode-tel      TEL / CarPlay: TEL again on CarPlay opens the phone menu (default)
+#   mode-carplay  CarPlay only: TEL again on CarPlay does nothing
+#   mode-custom   CarPlay / CarPlay Custom: TEL again on CarPlay opens CarPlay Custom
+#   custom-<ui>   set CarPlay Custom: phone (default), home, maps, music or nowplaying
 #   -force        install even if the firmware fingerprint does not match
 #
 # Runs on the MMI (QNX). Start it over SSH, from the M.I.B. launcher hook
 # (mod/command.sh) or from the TEL2ACP GEM screen. Reboot the MMI after
-# install, uninstall and restore. The mode-* commands work right away.
+# install, uninstall and restore. The mode-* and custom-* commands work right away.
 
-VERSION="1.1.0"
+VERSION="1.2.0"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
@@ -56,8 +57,10 @@ FLAG_PENDING="$PERSIST/tel2acp_pending"
 FLAG_LOADED="$PERSIST/tel2acp_loaded"
 FLAG_DISABLED="$PERSIST/tel2acp_disabled"
 
-# TEL mode (tel, carplay or phone). The patched class reads it at every TEL press
+# TEL mode (tel, carplay or custom; phone is the 1.1.0 name of custom) and the
+# CarPlay Custom screen. The patched class reads both at every TEL press
 MODE_FILE="$PERSIST/tel2acp_mode"
+CUSTOM_FILE="$PERSIST/tel2acp_custom"
 
 # sha1 of lsd.jxe on MHI2_ER_AU57x_K3663_1 (MU1425), the firmware the patch was built from
 SUPPORTED_JXE_SHA1="2be4758b1e9f3068173c8df6dac9be541113a3e6"
@@ -179,16 +182,37 @@ clear_flags() {
 current_mode() {
 	mode=$(cat "$MODE_FILE" 2> /dev/null)
 	case "$mode" in
-		carplay|phone) echo "$mode" ;;
+		carplay|custom) echo "$mode" ;;
+		phone) echo "custom" ;;
 		*) echo "tel" ;;
 	esac
 }
 
+# Empty for an unknown mode
 mode_text() {
 	case "$1" in
+		tel) echo "TEL / CarPlay" ;;
 		carplay) echo "CarPlay only" ;;
-		phone) echo "CarPlay / iPhone Phone app" ;;
-		*) echo "TEL / CarPlay" ;;
+		custom) echo "CarPlay / CarPlay Custom" ;;
+	esac
+}
+
+current_custom() {
+	custom=$(cat "$CUSTOM_FILE" 2> /dev/null)
+	case "$custom" in
+		home|maps|music|nowplaying) echo "$custom" ;;
+		*) echo "phone" ;;
+	esac
+}
+
+# Empty for an unknown CarPlay Custom screen
+custom_text() {
+	case "$1" in
+		phone) echo "Phone" ;;
+		home) echo "Home" ;;
+		maps) echo "Maps" ;;
+		music) echo "Music" ;;
+		nowplaying) echo "Now Playing" ;;
 	esac
 }
 
@@ -311,7 +335,7 @@ do_uninstall() {
 	fi
 	remove_gem_link
 	clear_flags
-	rm -f "$MODE_FILE" 2> /dev/null
+	rm -f "$MODE_FILE" "$CUSTOM_FILE" 2> /dev/null
 	mount_ro
 	log "done, reboot the MMI to deactivate"
 }
@@ -327,7 +351,7 @@ do_restore() {
 	rm -f "$JARS/$JAR_NAME"
 	remove_gem_link
 	clear_flags
-	rm -f "$MODE_FILE" 2> /dev/null
+	rm -f "$MODE_FILE" "$CUSTOM_FILE" 2> /dev/null
 	mount_ro
 	log "done, reboot the MMI"
 }
@@ -363,12 +387,14 @@ do_status() {
 		log "boot guard: no start since install"
 	fi
 	log "TEL mode:   $(mode_text "$(current_mode)")"
+	log "custom:     CarPlay $(custom_text "$(current_custom)")"
 	if [ -f "$LSD_BAK" ]; then log "backup:     $LSD_BAK"; else log "backup:     none"; fi
 	if [ -L "$ESD_LINK" ] || [ -f "$ESD_LINK" ]; then log "GEM screen: on"; else log "GEM screen: off"; fi
 }
 
 do_mode() {
 	log "== mode-$1"
+	[ -n "$(mode_text "$1")" ] || die "unknown mode '$1'"
 	[ -d "$PERSIST" ] || die "$PERSIST not found"
 	if [ "$1" = tel ]; then
 		rm -f "$MODE_FILE" 2> /dev/null
@@ -377,6 +403,19 @@ do_mode() {
 	fi
 	[ "$(current_mode)" = "$1" ] || die "could not set the TEL mode"
 	log "TEL mode set to $(mode_text "$1"), no reboot needed"
+	if [ "$1" = custom ]; then
+		log "CarPlay Custom is $(custom_text "$(current_custom)")"
+	fi
+}
+
+do_custom() {
+	log "== custom-$1"
+	[ -n "$(custom_text "$1")" ] || die "unknown CarPlay Custom screen '$1'"
+	[ -d "$PERSIST" ] || die "$PERSIST not found"
+	( echo "$1" > "$CUSTOM_FILE" ) 2> /dev/null || die "could not write $CUSTOM_FILE"
+	[ "$(current_custom)" = "$1" ] || die "could not set CarPlay Custom"
+	log "CarPlay Custom set to $(custom_text "$1"), no reboot needed"
+	[ "$(current_mode)" = custom ] || log "TEL mode is $(mode_text "$(current_mode)"), set CarPlay / CarPlay Custom to use it"
 }
 
 do_gem_on() {
@@ -407,13 +446,13 @@ case "$cmd" in
 	status) do_status ;;
 	gem-on) do_gem_on ;;
 	gem-off) do_gem_off ;;
-	mode-tel) do_mode tel ;;
-	mode-carplay) do_mode carplay ;;
-	mode-phone) do_mode phone ;;
+	mode-*) do_mode "${cmd#mode-}" ;;
+	custom-*) do_custom "${cmd#custom-}" ;;
 	*)
 		echo "TEL2ACP $VERSION"
 		echo "Usage: $0 install [-force] | uninstall | restore | status | gem-on | gem-off"
-		echo "       $0 mode-tel | mode-carplay | mode-phone"
+		echo "       $0 mode-tel | mode-carplay | mode-custom"
+		echo "       $0 custom-phone | custom-home | custom-maps | custom-music | custom-nowplaying"
 		exit 1
 		;;
 esac
