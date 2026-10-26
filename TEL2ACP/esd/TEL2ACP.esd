@@ -1,0 +1,22 @@
+#---------------------------------------------------------------------
+# TEL2ACP - the TEL hard key opens Apple CarPlay
+# Linked into /eso/hmi/engdefs by "tel2acp.sh gem-on"
+# Needs the M.I.B. SD card in the sda0 slot
+#---------------------------------------------------------------------
+screen   TEL2ACP Main
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/TEL2ACP/esd/status.sh"
+   label    "Status"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/TEL2ACP/esd/install.sh"
+   label    "Install TEL -> CarPlay"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/TEL2ACP/esd/uninstall.sh"
+   label    "Uninstall TEL -> CarPlay"
+
+script
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/TEL2ACP/esd/restore.sh"
+   label    "Restore original lsd.sh"
