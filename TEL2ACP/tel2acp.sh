@@ -93,6 +93,23 @@ sha1_of() {
 	return 1
 }
 
+# The lsd.sh line that starts the J9 VM. Other trains use $J9, MU1425 runs
+# "on -p 12 /ifs/jre/bin/j9 $VMOPTIONS -Xbootclasspath:$BOOTCLASSPATH ..."
+is_j9_line() {
+	case "$1" in
+		'#'*) return 1 ;;
+		'$J9'*|*'/j9 '*'$BOOTCLASSPATH'*) return 0 ;;
+	esac
+	return 1
+}
+
+has_j9_line() {
+	while IFS= read -r l || [ -n "$l" ]; do
+		is_j9_line "$l" && return 0
+	done < "$1"
+	return 1
+}
+
 is_patched() {
 	grep -q "$MARKER" "$LSD_SH" 2> /dev/null
 }
@@ -122,7 +139,7 @@ check_firmware() {
 
 check_lsd_sh() {
 	[ -f "$LSD_SH" ] || die "$LSD_SH not found"
-	grep -q '^\$J9' "$LSD_SH" || die "lsd.sh has no \$J9 start line, unknown layout"
+	has_j9_line "$LSD_SH" || die "lsd.sh has no J9 start line, unknown layout"
 	grep -q 'BOOTCLASSPATH' "$LSD_SH" || die "lsd.sh does not use BOOTCLASSPATH, unknown layout"
 	if grep -v "$MARKER" "$LSD_SH" | grep -q 'Xbootclasspath/p:'; then
 		log "lsd.sh already has another -Xbootclasspath/p: mod, TEL2ACP will add its jar to the same list"
@@ -181,17 +198,13 @@ insert_patch_block() {
 	block=$(patch_block)
 	inserted=0
 	while IFS= read -r l || [ -n "$l" ]; do
-		case "$l" in
-			'$J9'*)
-				if [ $inserted = 0 ]; then
-					out "$block"
-					inserted=1
-				fi
-				;;
-		esac
+		if [ $inserted = 0 ] && is_j9_line "$l"; then
+			out "$block"
+			inserted=1
+		fi
 		out "$l"
 	done < "$LSD_SH" > "$tmp"
-	if ! grep -q "$MARKER" "$tmp" || ! grep -q '^\$J9' "$tmp"; then
+	if ! grep -q "$MARKER" "$tmp" || ! has_j9_line "$tmp"; then
 		rm -f "$tmp"
 		return 1
 	fi
@@ -206,7 +219,7 @@ remove_patch_lines() {
 			*) out "$l" ;;
 		esac
 	done < "$LSD_SH" > "$tmp"
-	if grep -q "$MARKER" "$tmp" || ! grep -q '^\$J9' "$tmp"; then
+	if grep -q "$MARKER" "$tmp" || ! has_j9_line "$tmp"; then
 		rm -f "$tmp"
 		return 1
 	fi
