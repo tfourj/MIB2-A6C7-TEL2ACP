@@ -147,10 +147,12 @@ CarPlay opened from the MENU tile or by the phone does not go through `HardKeyMa
 
 This is implemented in [`src/de/audi/tghu/fwhmi/appmgr/HardKeyManager.java`](../src/de/audi/tghu/fwhmi/appmgr/HardKeyManager.java).
 
-### TEL modes and the iPhone's Phone app
+### TEL modes and CarPlay Custom
 
 What TEL does while a terminal mode screen is shown comes from `/mnt/persist/tel2acp_mode`, read at every TEL press:
-no file or `tel` fires `HK_TEL` (phone menu), `carplay` does nothing, `phone` asks the iPhone for its Phone app.
+no file or `tel` fires `HK_TEL` (phone menu), `carplay` does nothing, `custom` (or the 1.1.0 `phone`) asks the iPhone
+for the CarPlay Custom screen in `/mnt/persist/tel2acp_custom`: `phone` (default), `home`, `maps`, `music` or `nowplaying`,
+sent as `UI_PHONE`, `UI_HOME`, `UI_NAVIGATION`, `UI_MEDIA` or `UI_MEDIA_NOWPLAYING`.
 
 The CarPlay DSI can do that:
 
@@ -202,8 +204,10 @@ Build notes:
 - The `getCurrentScreenID() / 10000 == 24` check comes from `TerminalModeHMIApplication.getId() = 24`
   and `TerminalModeScreenFactory.createScreen()`, which builds screens 240000 (CarPlay/AA view) to 240009 (240002 is "no device").
   It has not been seen on a running unit yet.
-- The Phone app mode has not been tested on the car. The native CarPlay process isn't in the backup in readable form,
-  so it is unverified that it turns `UI_PHONE` into the iPhone's Phone app.
+- CarPlay Custom with Phone works on the car. Home, Maps, Music and Now Playing use the same call with other `UI_*` values
+  and have not been tested yet.
+- The Set_CarPlay_Custom GEM submenu (`screen Set_CarPlay_Custom TEL2ACP` in its own esd file) has not been seen on the car yet.
+  If it doesn't show up, the `custom-*` commands still work over SSH or `mod/command.sh`.
 - Long-press TEL, steering-wheel phone buttons (`MFL_*`) and voice (`SDS`) use other paths and are not affected.
 - Only valid for this firmware (`K3663`). Other trains may number things differently.
 
