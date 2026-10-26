@@ -32,7 +32,7 @@ J9 quirks found on this firmware, in case someone wants to repeat it:
 - Return opcodes are J9-specific (`AC` void, `AD` 1-slot, `AE` 2-slot, ...).
 - `static final` constants are inlined, so event IDs show up as literal `bipush`/`sipush`, not field refs.
 
-The analysis tools are not part of this repo.
+The tools are in [`tools/jxe/`](../tools/jxe), documented in [TOOLS.md](TOOLS.md).
 
 ## Key path: physical TEL button → phone screen
 

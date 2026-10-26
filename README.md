@@ -137,6 +137,7 @@ JAVA_HOME="/path/to/jdk8" ./build.sh
 ```
 
 This rebuilds `TEL2ACP/TEL2ACP.jar` from `src/`. The classes in `stubs/` only stand in for firmware types at compile time and are not included in the jar.
+Set `JXE` to your `lsd.jxe` to also check the jar against the firmware (see [docs/TOOLS.md](docs/TOOLS.md#checkrefspy)).
 
 ## How it works
 
@@ -145,6 +146,11 @@ The patched class fires `SWITCH_TO_TERMINAL_MODE` (1903) instead. The firmware a
 If a CarPlay screen (240000–240009) is already showing, TEL fires `HK_TEL` as before.
 
 Full analysis: [docs/FINDINGS.md](docs/FINDINGS.md).
+
+## Analysis tools
+
+[`tools/jxe/`](tools/jxe) has the Python tools used to read the firmware: a class browser and disassembler for `lsd.jxe`, a state machine explorer, and a checker that tests a patch jar against the firmware.
+Usage is in [docs/TOOLS.md](docs/TOOLS.md).
 
 ## Credits
 
