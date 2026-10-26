@@ -131,11 +131,25 @@ case 4:
 
 The rest of the class is the original logic (constructor builds 16 `ButtonModel(i + 1)`, getters, logging IDs 1264/1265/1266).
 
+### TEL key light
+
+Each app state lights its own hard key on entry with `KbdService.setHKIlluminationExclusive(terminalId, key, true)`.
+Phone uses key 4 (TEL), Media 2, Navi 5. The terminal mode state `246` only calls `activeApplication(.., 24)` and never sets a light,
+so on CarPlay the key of the previous app stays lit.
+
+`KbdHandler.setHKIlluminationExclusive` ignores the boolean. It always lights the given key and turns the previous one off.
+`setHKIllumination` is empty and only `setHKIlluminationOff` switches a key off. Phone's `exitTelApp` calls it with `false`, which still lights TEL.
+
+So after firing `1903`, the patch calls `framework.getKbdService().setHKIlluminationExclusive(terminalId, 4, true)` inside a catch-all.
+Nothing on the way into state `246` changes the light again, so TEL stays lit until another app lights its own key.
+CarPlay opened from the MENU tile or by the phone does not go through `HardKeyManager`, so the light doesn't change there.
+`FocusManager.setActiveApplication(.., 24)` sees every entry, but would mean rebuilding that class too.
+
 This is implemented in [`src/de/audi/tghu/fwhmi/appmgr/HardKeyManager.java`](../src/de/audi/tghu/fwhmi/appmgr/HardKeyManager.java).
 
 Build notes:
 
-- It is compiled against stub classes for `IFrameworkAccess`, `HMIService`, `ButtonModel` and `LogChannel` (only the signatures used).
+- It is compiled against stub classes for `IFrameworkAccess`, `HMIService`, `KbdService`, `ButtonModel` and `LogChannel` (only the signatures used).
   The existing Audi mod `g24fullscreen.jar` uses class version 46 (Java 1.2). `build.sh` uses JDK 8 `-source 1.3 -target 1.2`, which gives the same version.
 - Only `HardKeyManager.class` goes into the jar.
 - Every firmware method the compiled class calls was checked against `lsd.jxe` (name, descriptor, interface vs class).
@@ -159,7 +173,7 @@ Build notes:
 ## Risks and things not verified
 
 - **Tested on this car only.** TEL opens CarPlay after installing from GEM → M.I.B. → individual script and rebooting.
-  Everything above comes from static analysis of this unit's `lsd.jxe`.
+  Everything above comes from static analysis of this unit's `lsd.jxe`. The TEL key light has not been tested on the car yet.
 - If the replacement class is wrong (missing method, wrong signature, bad class version), the HMI (`lsd`) can fail to start.
   That means a black screen and no GEM. **Have SSH or another way to restore `lsd.sh` / delete the jar before testing.**
 - Behaviour with no CarPlay phone connected is unknown. State 246 picks substate 248 or 249 based on `STATE_TERMINAL_MODE_CHOICE (1105)`.

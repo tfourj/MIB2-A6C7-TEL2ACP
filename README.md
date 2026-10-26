@@ -4,10 +4,10 @@ Makes the **TEL** button on an Audi MHI2 MMI open **Apple CarPlay** (or Android 
 
 | You press | Before | After |
 |---|---|---|
-| TEL | Phone menu | CarPlay |
+| TEL | Phone menu | CarPlay, with the TEL key lit |
 | TEL while CarPlay is on screen | Phone menu | Phone menu |
 
-All other buttons work as before.
+All other buttons work as before. The TEL light only follows CarPlay when TEL opened it, not when CarPlay is opened from MENU or by the phone.
 
 > [!WARNING]
 > **Tested on one car only**, an A6 C7 with `MHI2_ER_AU57x_K3663_1`. The patch was built by reverse engineering that unit's firmware (see [docs/FINDINGS.md](docs/FINDINGS.md)).
@@ -148,6 +148,7 @@ Set `JXE` to your `lsd.jxe` to also check the jar against the firmware (see [doc
 Every hard key goes through `de.audi.tghu.fwhmi.appmgr.HardKeyManager.triggerKeyEvent()`. TEL normally fires the state-machine event `HK_TEL` (103).
 The patched class fires `SWITCH_TO_TERMINAL_MODE` (1903) instead. The firmware already uses that event when a connected phone takes over the screen.
 If a CarPlay screen (240000–240009) is already showing, TEL fires `HK_TEL` as before.
+After opening CarPlay it lights the TEL key through `KbdService.setHKIlluminationExclusive`, the same call the phone screen uses.
 
 Full analysis: [docs/FINDINGS.md](docs/FINDINGS.md).
 
