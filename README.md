@@ -43,8 +43,8 @@ All other buttons work as before.
    ```
 
    **Without SSH**: copy `TEL2ACP/command.sh` to `mod/command.sh` on the card.
-   Then run the M.I.B. installation again, the same way you installed M.I.B. (software update from the SD card).
-   The M.I.B. launcher runs `mod/command.sh` at the end. Delete `mod/command.sh` afterwards.
+   Then run it with GEM → M.I.B. → individual script, or run the M.I.B. installation again
+   (software update from the SD card), which runs `mod/command.sh` at the end. Delete `mod/command.sh` afterwards.
 
 3. Reboot the MMI (GEM → M.I.B. → Reboot).
 4. Press TEL. CarPlay should open.
