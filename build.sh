@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds TEL2ACP/TEL2ACP.jar from src/ against the compile-only stubs in stubs/.
 # Needs a JDK 8 (newer JDKs cannot target the old class format the MMI's J9 VM expects).
-# Set JAVA_HOME to a JDK 8 if javac on PATH is newer.
+# Set JAVA_HOME to a JDK 8 if javac on PATH is newer. Set JXE to also check the jar against the firmware.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -28,3 +28,9 @@ mkdir -p build/stubs build/classes
 # The installer compares this against the jar on the SD card and on the unit
 sha1sum TEL2ACP/TEL2ACP.jar | cut -d ' ' -f 1 > TEL2ACP/TEL2ACP.jar.sha1
 echo "built TEL2ACP/TEL2ACP.jar ($(cat TEL2ACP/TEL2ACP.jar.sha1))"
+
+# Optional: check the jar against the firmware (JXE=/path/to/lsd.jxe ./build.sh)
+if [ -n "${JXE:-}" ]; then
+    PYTHON="$(command -v python3 || command -v python)"
+    "$PYTHON" tools/jxe/checkrefs.py "$JXE" TEL2ACP/TEL2ACP.jar
+fi
