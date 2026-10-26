@@ -3,6 +3,7 @@
 # CarPlay / CarPlay Custom mode
 # Submenu of the TEL2ACP screen, linked into /eso/hmi/engdefs by "tel2acp.sh gem-on"
 # Needs the M.I.B. SD card in the sda0 slot
+# [x] marks the selected screen, tel2acp.sh rewrites them
 #---------------------------------------------------------------------
 screen   Set_CarPlay_Custom TEL2ACP
 
@@ -12,20 +13,20 @@ script
 
 script
    value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/custom-phone.sh"
-   label    "Phone"
+   label    "[x] Phone"
 
 script
    value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/custom-home.sh"
-   label    "Home"
+   label    "[ ] Home"
 
 script
    value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/custom-maps.sh"
-   label    "Maps"
+   label    "[ ] Maps"
 
 script
    value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/custom-music.sh"
-   label    "Music"
+   label    "[ ] Music"
 
 script
    value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/custom-nowplaying.sh"
-   label    "Now Playing"
+   label    "[ ] Now Playing"

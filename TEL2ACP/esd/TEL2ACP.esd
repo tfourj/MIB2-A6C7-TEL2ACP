@@ -2,6 +2,7 @@
 # TEL2ACP - the TEL hard key opens Apple CarPlay
 # Linked into /eso/hmi/engdefs by "tel2acp.sh gem-on"
 # Needs the M.I.B. SD card in the sda0 slot
+# [x] marks the selected mode, tel2acp.sh rewrites them
 # The Set_CarPlay_Custom submenu is in TEL2ACP_custom.esd
 #---------------------------------------------------------------------
 screen   TEL2ACP Main
@@ -12,15 +13,15 @@ script
 
 script
    value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/mode-tel.sh"
-   label    "Mode: TEL / CarPlay"
+   label    "[x] Mode: TEL / CarPlay"
 
 script
    value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/mode-carplay.sh"
-   label    "Mode: CarPlay only"
+   label    "[ ] Mode: CarPlay only"
 
 script
    value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/mode-custom.sh"
-   label    "Mode: CarPlay / CarPlay Custom"
+   label    "[ ] Mode: CarPlay / CarPlay Custom"
 
 script
    value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/install.sh"
