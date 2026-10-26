@@ -66,7 +66,10 @@ goto_w jsr_w""".split()
 _J9_NAMES = {
     0xAC: "return", 0xAD: "return1", 0xAE: "return2",
     0xAF: "syncreturn0", 0xB0: "syncreturn1", 0xB1: "syncreturn2",
-    0xCA: "breakpoint", 0xD7: "aload0getfield",
+    0xCA: "breakpoint",
+    0xCB: "iloadw", 0xCC: "lloadw", 0xCD: "floadw", 0xCE: "dloadw", 0xCF: "aloadw",
+    0xD0: "istorew", 0xD1: "lstorew", 0xD2: "fstorew", 0xD3: "dstorew", 0xD4: "astorew",
+    0xD5: "iincw", 0xD7: "aload0getfield",
     0xE4: "return0(ctor)", 0xE5: "genericReturn", 0xE7: "invokeinterface",
     0xF3: "returnToJIT", 0xF4: "returnFromConstructor", 0xF5: "return1", 0xF9: "ldc2dw",
 }
@@ -84,7 +87,7 @@ for _op in [0x11, 0x13, 0x14, 0x84, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0x
 OPLEN[0xC5] = 4  # multianewarray
 OPLEN[0xC8] = 5  # goto_w
 OPLEN[0xC9] = 5  # jsr_w
-OPLEN[0xD5] = 5  # iinc wide (guess)
+OPLEN[0xD5] = 5  # iincw: u16 local, i16 constant (followed by a padding nop)
 OPLEN[0xD7] = 1  # aload0getfield: 1-byte prefix, a normal getfield follows
 OPLEN[0xE7] = 5  # invokeinterface: E7 00 B9 <index lo> <index hi>
 
@@ -188,14 +191,15 @@ class RomClass:
             size = (img.u16(p + 14) | (img.data[p + 16] << 16)) * 4
             code = img.data[p + METHOD_HEADER_SIZE:p + METHOD_HEADER_SIZE + size]
             q = p + METHOD_HEADER_SIZE + size
+            # Optional data after the bytecode: generic signature SRP first, then exception info
+            if mods & METHOD_HAS_GENERIC_SIG:
+                q += 4
             exceptions = []
             if mods & METHOD_HAS_EXCEPTIONS:
                 catch_count, throw_count = img.u16(q), img.u16(q + 2)
                 for k in range(catch_count):
                     exceptions.append(struct.unpack_from("<4I", img.data, q + 4 + k * 16))
                 q += 4 + catch_count * 16 + throw_count * 4
-            if mods & METHOD_HAS_GENERIC_SIG:
-                q += 4
             result.append(RomMethod(name, sig, mods, code, exceptions))
             p = q
         return result
@@ -246,6 +250,10 @@ class RomClass:
                 arg = str(code[pc + 1])
             elif op == 0x84:
                 arg = "%d %d" % (code[pc + 1], struct.unpack_from("<b", code, pc + 2)[0])
+            elif 0xCB <= op <= 0xD4:
+                arg = str(struct.unpack_from("<H", code, pc + 1)[0])
+            elif op == 0xD5:
+                arg = "%d %d" % struct.unpack_from("<Hh", code, pc + 1)
             elif op == 0xC5:
                 arg = "%s dims=%d" % (self.cp_entry(struct.unpack_from("<H", code, pc + 1)[0]), code[pc + 3])
             elif op == 0xAA:
