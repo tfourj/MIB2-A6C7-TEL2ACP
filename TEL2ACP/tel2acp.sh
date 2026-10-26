@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# TEL2ACP v1.2.0 - the TEL hard key opens Apple CarPlay
+# TEL2ACP v1.0.0 - the TEL hard key opens Apple CarPlay
 # Audi MHI2, firmware MHI2_ER_AU57x_K3663_1 (MU1425), e.g. A6/A7 C7
 #
 # Usage: tel2acp.sh <command> [-force]
@@ -16,7 +16,7 @@
 # Runs on the MMI (QNX). Start it over SSH, from the M.I.B. launcher hook
 # (mod/command.sh) or from the TEL2ACP GEM screen. Reboot the MMI afterwards.
 
-VERSION="1.2.0"
+VERSION="1.0.0"
 
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
