@@ -76,7 +76,7 @@ Or use **Uninstall** in the GEM screen, or set `TEL2ACP_ACTIONS="uninstall"` in 
 
 - the firmware is exactly `MHI2_ER_AU57x_K3663_1` (checksum of `/ifs/lsd.jxe`)
 - `TEL2ACP.jar` on the card isn't damaged, and the copy on the unit matches it
-- `lsd.sh` has the expected layout and no other `-Xbootclasspath/p:` mod is installed
+- `lsd.sh` has the expected layout
 - `/mnt/persist` is writable (the boot guard needs it)
 - M.I.B. isn't busy flashing, backing up or rebooting
 
@@ -116,13 +116,9 @@ If the car has no Wi-Fi hotspot, a USB-to-Ethernet adapter in the car's USB port
 
 - Copies `TEL2ACP.jar` to `/mnt/app/eso/hmi/lsd/jars/`.
 - Adds the boot guard block before the J9 start line in `/mnt/app/eso/hmi/lsd/lsd.sh`. Every line ends in `#TEL2ACP`.
-  When the guard allows it, the block adds:
-
-  ```sh
-  BOOTCLASSPATH="$BOOTCLASSPATH -Xbootclasspath/p:$TEL2ACP_JAR"
-  ```
-
-  This loads the patched class ahead of the firmware's own copy in `lsd.jxe`. M.I.B.'s NavActiveIgnore patch works the same way.
+  When the guard allows it, the block adds the jar to J9's `-Xbootclasspath/p:` list, which loads the patched class ahead of the firmware's own copy in `lsd.jxe`.
+  M.I.B.'s NavActiveIgnore patch works the same way.
+  If another mod (like [JOKERBTN](../MIB2-A6C7-JOKERBTN)) already uses `-Xbootclasspath/p:`, TEL2ACP joins that list instead of adding a second option, so both work.
 - Uses three small flag files in `/mnt/persist` (`tel2acp_pending`, `tel2acp_loaded`, `tel2acp_disabled`).
 - Saves the original `lsd.sh` as `lsd.sh.tel2acp.bak` on the unit and `TEL2ACP/backup/lsd.sh` on the card.
 
