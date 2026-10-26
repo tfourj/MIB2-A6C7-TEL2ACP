@@ -13,8 +13,17 @@
 #   status      only write the status to TEL2ACP/tel2acp.log
 TEL2ACP_ACTIONS="install gem-on"
 
-[ -n "$VOLUME" ] || VOLUME=/net/mmx/fs/sda0
+tel2acp_gem=0
+if [ -z "$VOLUME" ]; then
+	VOLUME=/net/mmx/fs/sda0
+	tel2acp_gem=1
+fi
 
 for tel2acp_action in $TEL2ACP_ACTIONS; do
 	/bin/sh "$VOLUME/TEL2ACP/tel2acp.sh" "$tel2acp_action"
 done
+
+# GEM closes the output when the script ends, so leave time to read it
+if [ $tel2acp_gem = 1 ]; then
+	sleep 10
+fi
