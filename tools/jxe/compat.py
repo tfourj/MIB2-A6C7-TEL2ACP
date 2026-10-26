@@ -12,7 +12,7 @@ compat_ref.json) and checks:
 - the CarPlay app id and screen range the jar uses
 - the System state machine: SWITCH_TO_TERMINAL_MODE works from the phone screen
 - the TEL key light id used by the phone state machine
-- the model and DSI ids the phone mode uses
+- the model and DSI ids the CarPlay Custom mode uses
 - optionally the lsd.sh start line layout the installer needs
 
 Verdict and exit status: 0 the jar fits, 1 the patch needs a rebuild for this
@@ -52,11 +52,15 @@ EVENTS = {"HK_TEL": 103, "SWITCH_TO_TERMINAL_MODE": 1903}
 TERMINAL_APP_ID = 24
 SCREEN_APP_DIVISOR = 10000
 TEL_LIGHT_KEY = 4
-# Phone mode: (class, field, value) the jar hardcodes to open the iPhone's Phone app
-PHONE_MODE_IDS = [
+# CarPlay Custom mode: (class, field, value) the jar hardcodes to open a CarPlay screen on the iPhone
+CUSTOM_MODE_IDS = [
     ("de/audi/atip/model/ICoreSystemModelBank", "ACTIVE_SMARTPHONE_DEVICE_CHOICE", 1122),
     ("de/audi/app/terminalmode/device/TMDeviceControl", "ACTIVE_DEVICE_CARPLAY", 1),
+    ("org/dsi/ifc/carplay/DSICarplay", "UI_HOME", 1),
     ("org/dsi/ifc/carplay/DSICarplay", "UI_PHONE", 2),
+    ("org/dsi/ifc/carplay/DSICarplay", "UI_NAVIGATION", 3),
+    ("org/dsi/ifc/carplay/DSICarplay", "UI_MEDIA", 4),
+    ("org/dsi/ifc/carplay/DSICarplay", "UI_MEDIA_NOWPLAYING", 5),
 ]
 
 # J9 keeps its own flags above the Java access bits; they don't change behaviour
@@ -341,13 +345,13 @@ def check_light(img, report):
         report.rebuild("phone state machine lights key(s) %s, the jar uses %d" % (keys, TEL_LIGHT_KEY))
 
 
-def check_phone_mode(img, report):
-    print("Phone mode (TEL opens the iPhone's Phone app)")
-    for name, field, value in PHONE_MODE_IDS:
+def check_custom_mode(img, report):
+    print("CarPlay Custom mode (TEL opens a CarPlay screen on the iPhone)")
+    for name, field, value in CUSTOM_MODE_IDS:
         short = "%s.%s" % (name.split("/")[-1], field)
         found = int_fields(img, name).get(field) if img.has(name) else None
         if found is None:
-            report.warn("%s not found, phone mode falls back to the phone menu" % short)
+            report.warn("%s not found, CarPlay Custom falls back to the phone menu" % short)
         elif found != value:
             report.rebuild("%s is %d here, the jar uses %d" % (short, found, value))
         else:
@@ -409,7 +413,7 @@ def main():
     check_constants(img, report)
     check_state_machine(img, ref, report)
     check_light(img, report)
-    check_phone_mode(img, report)
+    check_custom_mode(img, report)
     if args.lsd_sh:
         check_lsd_sh(args.lsd_sh, report)
 
