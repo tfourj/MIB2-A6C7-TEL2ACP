@@ -68,15 +68,23 @@ public class HardKeyManager {
     private static final int ACTIVE_SMARTPHONE_DEVICE_CHOICE = 1122;
     private static final int ACTIVE_DEVICE_CARPLAY = 1;
 
-    // CarPlay DSI service, asks the iPhone to show one of its own apps
+    // CarPlay DSI service, asks the iPhone to show one of its own screens (DSICarplay.UI_*)
     private static final String DSI_CARPLAY = "org.dsi.ifc.carplay.DSICarplay";
+    private static final int CARPLAY_UI_HOME = 1;
     private static final int CARPLAY_UI_PHONE = 2;
+    private static final int CARPLAY_UI_NAVIGATION = 3;
+    private static final int CARPLAY_UI_MEDIA = 4;
+    private static final int CARPLAY_UI_MEDIA_NOWPLAYING = 5;
 
-    // What TEL does while terminal mode is on screen, written by "tel2acp.sh mode-*"
+    // What TEL does while terminal mode is on screen, written by "tel2acp.sh mode-*".
+    // "phone" is the 1.1.0 name of the custom mode.
     private static final String MODE_FILE = "/mnt/persist/tel2acp_mode";
     private static final int MODE_TEL = 0;
     private static final int MODE_CARPLAY = 1;
-    private static final int MODE_PHONE = 2;
+    private static final int MODE_CUSTOM = 2;
+
+    // CarPlay screen the custom mode opens, written by "tel2acp.sh custom-*". Phone when not set
+    private static final String CUSTOM_FILE = "/mnt/persist/tel2acp_custom";
 
     // Original log channel level and message ids
     private static final int LOG_LEVEL = 1000000;
@@ -175,8 +183,8 @@ public class HardKeyManager {
 
     /**
      * TEL opens CarPlay. TEL again while CarPlay is on screen depends on the mode:
-     * tel opens the phone menu, carplay does nothing, phone opens the iPhone's
-     * Phone app in CarPlay (the phone menu when that isn't possible).
+     * tel opens the phone menu, carplay does nothing, custom opens the CarPlay
+     * screen picked in the custom file (the phone menu when that isn't possible).
      */
     private void handleTelKey(int terminalId) {
         HMIService hmi = getHmiService();
@@ -192,7 +200,7 @@ public class HardKeyManager {
         if (mode == MODE_CARPLAY) {
             return;
         }
-        if (mode == MODE_PHONE && openCarPlayPhone()) {
+        if (mode == MODE_CUSTOM && openCarPlayUi(readCustom())) {
             lightTelKey(terminalId);
             return;
         }
@@ -201,20 +209,45 @@ public class HardKeyManager {
 
     /** The TEL mode from the mode file. Missing or unknown means tel. */
     private static int readMode() {
+        String mode = readSetting(MODE_FILE);
+        if (mode.equals("carplay")) {
+            return MODE_CARPLAY;
+        }
+        if (mode.equals("custom") || mode.equals("phone")) {
+            return MODE_CUSTOM;
+        }
+        return MODE_TEL;
+    }
+
+    /** The CarPlay screen from the custom file. Missing or unknown means phone. */
+    private static int readCustom() {
+        String custom = readSetting(CUSTOM_FILE);
+        if (custom.equals("home")) {
+            return CARPLAY_UI_HOME;
+        }
+        if (custom.equals("maps")) {
+            return CARPLAY_UI_NAVIGATION;
+        }
+        if (custom.equals("music")) {
+            return CARPLAY_UI_MEDIA;
+        }
+        if (custom.equals("nowplaying")) {
+            return CARPLAY_UI_MEDIA_NOWPLAYING;
+        }
+        return CARPLAY_UI_PHONE;
+    }
+
+    /** The first word of a setting file, empty when it is missing. Never throws. */
+    private static String readSetting(String path) {
         FileInputStream in = null;
         try {
-            in = new FileInputStream(MODE_FILE);
+            in = new FileInputStream(path);
             byte[] buf = new byte[16];
             int n = in.read(buf);
-            String mode = n > 0 ? new String(buf, 0, n).trim() : "";
-            if (mode.equals("carplay")) {
-                return MODE_CARPLAY;
-            }
-            if (mode.equals("phone")) {
-                return MODE_PHONE;
-            }
+            return n > 0 ? new String(buf, 0, n).trim() : "";
         } catch (Throwable t) {
-            // No mode file yet
+            // Not set yet
+            return "";
         } finally {
             try {
                 if (in != null) {
@@ -224,14 +257,13 @@ public class HardKeyManager {
                 // Nothing left to do
             }
         }
-        return MODE_TEL;
     }
 
     /**
-     * Asks the iPhone to show its Phone app. Only while a CarPlay device is active,
-     * so Android Auto and the no-device screen keep the phone menu. Never throws.
+     * Asks the iPhone to show one of its CarPlay screens. Only while a CarPlay device
+     * is active, so Android Auto and the no-device screen keep the phone menu. Never throws.
      */
-    private boolean openCarPlayPhone() {
+    private boolean openCarPlayUi(int ui) {
         try {
             if (this.framework.getHmiServiceApp().getChoiceModel(ACTIVE_SMARTPHONE_DEVICE_CHOICE).getValue()
                     != ACTIVE_DEVICE_CARPLAY) {
@@ -247,7 +279,7 @@ public class HardKeyManager {
                 if (carplay == null) {
                     return false;
                 }
-                carplay.requestUI(CARPLAY_UI_PHONE);
+                carplay.requestUI(ui);
                 return true;
             } finally {
                 context.ungetService(ref);
