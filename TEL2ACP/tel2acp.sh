@@ -21,17 +21,18 @@ VERSION="1.2.0"
 export PATH=:/proc/boot:/sbin:/bin:/usr/bin:/usr/sbin:/net/mmx/bin:/net/mmx/usr/bin:/net/mmx/usr/sbin:/net/mmx/sbin:/net/mmx/mnt/app/armle/bin:/net/mmx/mnt/app/armle/sbin:/net/mmx/mnt/app/armle/usr/bin:/net/mmx/mnt/app/armle/usr/sbin
 export LD_LIBRARY_PATH=/net/mmx/mnt/app/root/lib-target:/net/mmx/mnt/eso/lib:/net/mmx/eso/lib:/net/mmx/mnt/app/usr/lib:/net/mmx/mnt/app/armle/lib:/net/mmx/mnt/app/armle/lib/dll:/net/mmx/mnt/app/armle/usr/lib
 
-# Package folder on the SD card (where this script lives)
+# Package folder on the SD card (where this script lives), custom-patches/TEL2ACP
 PKG=$(dirname "$0")
 case "$PKG" in
 	/*) ;;
 	*) PKG="$(pwd)/$PKG" ;;
 esac
+SD_ROOT="${PKG%/*/*}"
 
 LOG="$PKG/tel2acp.log"
 
 # GEM scripts see the SD card read-only, the M.I.B. launcher remounts it the same way
-mount -uw "${PKG%/*}" 2> /dev/null
+mount -uw "$SD_ROOT" 2> /dev/null
 
 APP_MOUNT="/net/mmx/mnt/app"
 HMI="$APP_MOUNT/eso/hmi"
@@ -84,7 +85,7 @@ mount_ro() {
 }
 
 sha1_of() {
-	for tool in sha1sum /net/rcc/usr/bin/sha1sum /usr/bin/sha1sum "$PKG/../apps/sbin/sha1sum"; do
+	for tool in sha1sum /net/rcc/usr/bin/sha1sum /usr/bin/sha1sum "$SD_ROOT/apps/sbin/sha1sum"; do
 		sum=$("$tool" "$1" 2> /dev/null) || continue
 		set -- $sum
 		echo "$1"

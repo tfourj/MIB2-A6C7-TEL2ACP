@@ -6,17 +6,17 @@
 screen   TEL2ACP Main
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/TEL2ACP/esd/status.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/status.sh"
    label    "Status"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/TEL2ACP/esd/install.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/install.sh"
    label    "Install TEL -> CarPlay"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/TEL2ACP/esd/uninstall.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/uninstall.sh"
    label    "Uninstall TEL -> CarPlay"
 
 script
-   value    sys 1 0x0100 "/net/mmx/fs/sda0/TEL2ACP/esd/restore.sh"
+   value    sys 1 0x0100 "/net/mmx/fs/sda0/custom-patches/TEL2ACP/esd/restore.sh"
    label    "Restore original lsd.sh"
