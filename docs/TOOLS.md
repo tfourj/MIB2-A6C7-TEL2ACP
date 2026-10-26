@@ -20,6 +20,7 @@ Firmware files are in `.gitignore`. Don't commit them.
 | `jxe.py` | List classes, show fields and disassembled methods, evaluate static tables, search for constants |
 | `smtables.py` | Answer "which event goes where" for the generated HMI state machines |
 | `checkrefs.py` | Check a compiled patch jar against the firmware before installing it |
+| `compat.py` | Check whether the TEL2ACP jar fits another firmware |
 | `j9rom.py`, `j9interp.py` | Shared code: J9 ROM image reader, disassembler, small table interpreter |
 
 In the examples, `JXE` is the path to your `lsd.jxe`:
@@ -123,6 +124,30 @@ For each class in the jar it checks that:
 - interface methods are called on interfaces and class methods on classes
 
 `JXE=... ./build.sh` runs it after every build.
+
+## compat.py
+
+Run it on the `lsd.jxe` of another firmware to see whether TEL2ACP can support it.
+`--lsd-sh` also checks the unit's `/mnt/app/eso/hmi/lsd/lsd.sh` layout for the installer.
+
+```bash
+python tools/jxe/compat.py "$JXE" --lsd-sh path/to/lsd.sh
+```
+
+It compares the firmware against the K3663 reference in `compat_ref.json` and checks:
+
+- `HardKeyManager` has the same code. If not, it lists each key that behaves differently.
+- `checkrefs.py` passes for `TEL2ACP/TEL2ACP.jar` (or `--jar`)
+- the ids the jar hardcodes: `HK_TEL`, `SWITCH_TO_TERMINAL_MODE`, CarPlay app id 24 and its screens, TEL light key 4
+- `SWITCH_TO_TERMINAL_MODE` has an unguarded transition from a parent of the phone screen
+
+| Verdict | Exit | Meaning |
+|---|---|---|
+| `FITS` | 0 | The jar works as is. Add the printed sha1 to `tel2acp.sh`. |
+| `REBUILD` | 1 | The patch should work, but the jar must be rebuilt from this firmware's `HardKeyManager` and ids |
+| `NOT SUPPORTED` | 2 | Something the patch needs is missing |
+
+`--save-ref <train>` replaces `compat_ref.json` with the given jxe. Only use it on the firmware the jar was built from.
 
 ## Making another patch
 

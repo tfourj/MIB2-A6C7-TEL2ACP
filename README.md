@@ -158,6 +158,8 @@ Full analysis: [docs/FINDINGS.md](docs/FINDINGS.md).
 [`tools/jxe/`](tools/jxe) has the Python tools used to read the firmware: a class browser and disassembler for `lsd.jxe`, a state machine explorer, and a checker that tests a patch jar against the firmware.
 Usage is in [docs/TOOLS.md](docs/TOOLS.md).
 
+To check whether TEL2ACP can support another firmware, run [`compat.py`](docs/TOOLS.md#compatpy) on that unit's `lsd.jxe` (from an M.I.B. backup, `backup/<MU>-<train>/<MU>-lsd.jxe`).
+
 ## Credits
 
 - M.I.B. by MIBonk and MIB-Wiki, for the SD card toolkit and the `-Xbootclasspath/p:` approach.
