@@ -1,5 +1,9 @@
 # MIB2-A6C7-TEL2ACP
 
+> [!IMPORTANT]
+> **This repo has moved to [MIB2-Patcher](https://github.com/tfourj/MIB2-Patcher).** TEL2ACP is now part of it, together with the other patches, and installs from a single MIB2_Patcher entry in the GEM.
+> This repo is no longer updated. Use MIB2-Patcher for new versions and install instructions.
+
 Makes the **TEL** button on an Audi MHI2 MMI open **Apple CarPlay** (or Android Auto), packaged as an add-on for the M.I.B. (More Incredible Bash) SD card.
 
 | You press | Before | After |
